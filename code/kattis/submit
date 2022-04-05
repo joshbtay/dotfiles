@@ -1,0 +1,5 @@
+#!/bin/bash
+problem_name=${PWD##*/}
+kattis_dir=~/code/kattis
+com="$kattis_dir/submit.py run.py -p $problem_name -f"
+eval $com

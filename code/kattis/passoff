@@ -1,0 +1,20 @@
+#!/bin/bash
+
+DIR=test/
+RED='\033[0;31m'
+CYAN='\033[0;32m'
+ANS='\033[1;34m'
+RES='\033[1;31m'
+NC='\033[0m'
+for f in $DIR*.in
+do
+NUM=${f::-3}
+result=$( cat $f | ./run.py  )
+answer=$( cat "$NUM.ans" 2>/dev/null)
+if diff -q <(echo "$result") <(echo "$answer") > /dev/null
+then
+        printf "${CYAN}Passed case ${NUM: -1}${NC}\n"
+else
+        printf "${RED}Failed case ${NUM: -1}${NC}\n${ANS}Answer:${NC}\n$answer\n${RES}Result:${NC}\n$result\n"
+fi
+done

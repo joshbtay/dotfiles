@@ -12,6 +12,8 @@ class colors:
     UNDERLINE = '\033[4m'
 home = os.path.expanduser("~") +"/"
 
+#copy all files
+os.system("rsync -av --exclude '.git/' --exclude 'install.py' --exclude 'append_bashrc' . ~/")
 
 #bashrc additions
 bashrc = open(home + ".bashrc")
@@ -29,6 +31,3 @@ if line not in bashrc:
         bashrc.write("\n")
 else:
     print(f"{colors.WARNING}Skipping append_bashrc{colors.ENDC}")
-
-
-

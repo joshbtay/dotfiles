@@ -1,0 +1,6 @@
+#!/bin/bash
+PROB=$1
+echo problem: $PROB
+[ -z "$PROB" ] && { echo 'Pick a problem name'; exit 1; }
+[ ! -f "~/code/comp/$PROB/run.py" ] && cp ~/code/comp/problem_template.py ~/code/comp/$PROB/run.py
+vim ~/code/comp/$PROB/run.py
