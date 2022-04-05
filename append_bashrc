@@ -1,0 +1,21 @@
+
+function kattis {
+        [ ! -d "~/code/kattis/$1/" ] && mkdir ~/code/kattis/$1
+        cd ~/code/kattis/$1
+        ~/code/kattis/kattis $1
+}
+
+function pt {
+        [ ! -d "~/code/comp/$1/" ] && mkdir ~/code/comp/$1
+        cd ~/code/comp/$1
+        ~/code/comp/pt $1
+}
+
+function passoff {
+        ~/code/kattis/passoff
+}
+
+function submit {
+        ~/code/kattis/submit
+}
+
