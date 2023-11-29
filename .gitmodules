@@ -1,0 +1,3 @@
+[submodule "code/comp-scripts"]
+	path = code/comp-scripts
+	url = git@github.com:joshbtay/comp-scripts.git
