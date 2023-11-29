@@ -1,0 +1,44 @@
+font:
+  normal:
+     family: "MesloLGS NF"
+  offset:
+    x: 1
+    y: 1
+window:
+  opacity: 1
+  padding:
+    x: 20
+    y: 20
+key_bindings:
+  - { key: N, mods: Control|Shift, action: SpawnNewInstance }
+colors:
+  # Default colors
+  primary:
+    background: '#2b2040'
+    foreground: '#c6c6c6'
+
+  # Normal colors
+  normal:
+    # NOTE: Use '#131613' for the `black` color if you'd like to see
+    # black text on the background.
+    black: '#19191e'
+    red: '#ff415b'
+    green: '#7ffa4f'
+    yellow: '#e5d66d'
+    blue: '#7316e5'
+    magenta: '#e563a9'
+    #cyan: '#44e5e4'
+    cyan: '#44e5e4'
+    white: '#999999'
+
+  # Bright colors
+  bright:
+    black: '#999999'
+    red: '#ff415b'
+    green: '#7ffa4f'
+    yellow: '#e5d66d'
+    blue: '#7316e5'
+    magenta: '#e563a9'
+    cyan: '#44e5e4'
+    white: '#fafafa'
+#theme: One-Dark

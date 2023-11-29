@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   height="533.33331"
+   width="533.33331"
+   viewBox="-33.4974 -55.829 129.02702 223.31599"
+   version="1.1"
+   id="svg4"
+   sodipodi:docname="spotify.svg"
+   inkscape:version="1.2.2 (b0a8486541, 2022-12-01)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs8" />
+  <sodipodi:namedview
+     id="namedview6"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     showgrid="false"
+     inkscape:zoom="0.17883155"
+     inkscape:cx="-204.10269"
+     inkscape:cy="349.4909"
+     inkscape:window-width="933"
+     inkscape:window-height="1009"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg4" />
+  <path
+     d="m 97.065113,43.158 c -35.992,-21.375 -95.3600002,-23.34 -129.719,-12.912 -5.519,1.674 -11.353,-1.44 -13.024,-6.958 -1.672,-5.521 1.439,-11.352 6.96,-13.029 39.44299978,-11.972 105.008,-9.66 146.442997,14.936 4.964,2.947 6.59,9.356 3.649,14.31 -2.944,4.963 -9.359,6.600005 -14.309997,3.653 m -1.178,31.658005 c -2.525,4.098 -7.883,5.383 -11.975,2.867 -30.005,-18.444 -75.7620002,-23.788 -111.262,-13.012 -4.603,1.39 -9.466,-1.204 -10.864,-5.8 a 8.717,8.717 0 0 1 5.805,-10.856 c 40.5529998,-12.307005 90.968,-6.347005 125.432,14.833 4.092,2.52 5.38,7.88 2.864,11.968 M 82.223113,105.22 a 6.954,6.954 0 0 1 -9.569,2.316 c -26.22,-16.024995 -59.223,-19.643995 -98.09,-10.765995 a 6.955,6.955 0 0 1 -8.331,-5.232 6.95,6.95 0 0 1 5.233,-8.334 c 42.533,-9.722 79.017,-5.538 108.448,12.446 a 6.96,6.96 0 0 1 2.31,9.569995 m -51.21,-161.049 c -61.664,0 -111.656,49.99 -111.656,111.656005 0,61.671995 49.992,111.659995 111.657,111.659995 61.668,0 111.658997,-49.988 111.658997,-111.659995 C 142.67411,-5.838 92.684113,-55.829 31.015113,-55.829"
+     fill="#191414"
+     id="path2"
+     style="fill:#fafafa" />
+</svg>

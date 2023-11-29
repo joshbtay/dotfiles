@@ -1,0 +1,14 @@
+set clipboard+=unnamedplus
+set shiftwidth=4
+set tabstop=4
+set softtabstop=4
+set noexpandtab
+set autoindent
+set number
+set wildmode=longest,list
+set cc=80
+filetype plugin indent on
+syntax on
+set mouse=a
+set cursorline
+set ttyfast

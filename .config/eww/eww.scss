@@ -1,0 +1,147 @@
+$bg0: #2b2040;
+$blue: #7316e5;
+$bg1: #302347;
+$bg2: #35274f;
+$bg3: #3a2b56;
+$fg: #c6c6c6;
+$fg_d: #fafafa;
+$white: #fafafa;
+$grey: #999999;
+$red: #ff415b;
+$orange: #e64824;
+$yellow: #e5d66d;
+$purple: #e563a9;
+$green: #7ffa4f;
+$black: #19191e;
+$bg_d: #251c38;
+$light_grey: #b2b2b2;
+$main_color: #ff415b;
+$vertical: 4px;
+$edge: 4px;
+$separation: 4px;
+$transparent: rgba(0,0,0,0);
+
+* {
+    font-family: "Droid Sans Mono", "MesloLGS NF";
+    color: $fg;
+}
+
+.bar {
+	background-color: $bg_d;
+}
+
+scale {
+	background-color: $bg0;
+	margin-right: $separation;
+	margin-top: $vertical;
+	background-color: $bg_d;
+	margin-bottom: $vertical;
+	font-size: 13px;
+	color: $fg_d;
+	border-radius: 8px;
+	padding-left: 8px;
+	padding-right: 9px;
+	min-width:16px;
+	padding-top:4px;
+	padding-bottom:2px;
+}
+
+scale trough {
+  all: unset;
+  background-color: $bg3;
+  border-radius: 16px;
+  min-height: 10px;
+  min-width: 70px;
+  margin: 0px 10px 0px 10px;
+}
+
+scale slider{
+	all:unset;
+}
+
+scale trough highlight{
+	all: unset;
+	background-image: linear-gradient(to right, $orange 5%, $red 95% );
+	border-radius: 16px;
+}
+
+button {
+	background-size: contain;
+	background-position: center;
+	background-repeat: no-repeat;
+	margin-top: $vertical;
+	background-color: $bg_d;
+	margin-bottom: $vertical;
+	font-size: 13px;
+	color: $fg_d;
+	border-radius: 8px;
+	padding-left: 8px;
+	padding-right: 9px;
+	min-width:16px;
+	padding-top:4px;
+	padding-bottom:2px;
+}
+
+.wlabel, .vol{
+	background-size: contain;
+	background-position: center;
+	background-repeat: no-repeat;
+	min-width: 20px;
+	margin-left: 4px;
+	margin-right: 4px;
+}
+
+tooltip{
+	background-color:$bg_d;
+}
+
+.workspace {
+	margin-right: $separation;
+	background-color: $bg2;
+}
+
+.workspace-container {
+	margin-left: $edge;
+}
+
+.used{
+}
+
+.unused{
+}
+.active{
+	background-image: linear-gradient(to right, $orange 5%, $red 95% );
+}
+
+.active.used{
+	padding-left: 15px;
+	padding-right: 15px;
+}
+
+.clock{
+	margin-right: $edge;
+}
+
+.date{
+	margin-left: $separation;
+}
+
+.critical{
+	background-color: $orange;
+}
+
+.vol.low{
+	background-image: url('images/volume-low.svg');
+}
+.vol.med{
+	background-image: url('images/volume-med.svg');
+}
+.vol.high{
+	background-image: url('images/volume-high.svg');
+}
+.vol.off{
+	background-image: url('images/volume-off.svg');
+}
+.vol.mute{
+	background-image: url('images/volume-mute.svg');
+}

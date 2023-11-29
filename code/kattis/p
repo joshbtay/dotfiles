@@ -1,0 +1,40 @@
+#!/bin/python
+import sys
+from os import listdir
+from os.path import isdir,isfile, join
+from subprocess import Popen, PIPE
+from termcolor import colored
+if not isdir('./test') and not isdir('../test'):
+    print("No test directory found")
+    quit()
+test_case = 1
+args = sys.argv
+test_all = False
+if len(args) > 1:
+    if args[1] == 'a':
+        test_all = True
+    else:
+        test_case = int(args[1])
+directory='./test' if isdir('./test') else '../test'
+onlyfiles = [f for f in listdir(directory) if isfile(join(directory, f))]
+ins = []
+for n in onlyfiles:
+    if n[-3:] == '.in':
+        ins.append(n[:-3])
+ins.sort()
+if test_case > len(ins):
+    if len(ins) > 1:
+        print(f"There are only {len(ins)} test cases")
+    else:
+        print(f"There is only {len(ins)} test case")
+    quit()
+if not test_all:
+    ins = ins[test_case-1:test_case]
+processes = [Popen(f'python run.py < test/{test_input}.in', stdin=PIPE, stdout=PIPE, shell=True) for test_input in ins]
+for i, process in enumerate(processes):
+    print(f'{ins[i]}.in:')
+    stdout, stderr = process.communicate()
+    if stdout:
+        print(colored(stdout.decode('utf-8').rstrip(), 'cyan'))
+    if stderr:
+        print(colored(stderr.decode('utf-8').rstrip(), 'red'))

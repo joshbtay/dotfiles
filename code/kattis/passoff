@@ -1,0 +1,77 @@
+#!/bin/python
+import sys
+from os import listdir
+from os.path import isdir,isfile, join
+from subprocess import Popen, PIPE, TimeoutExpired
+import threading
+from termcolor import colored
+if not isdir('./test'):
+    print("No test directory found")
+    quit()
+onlyfiles = [f for f in listdir('./test') if isfile(join('./test', f))]
+ins = set()
+ans = set()
+
+def cl(s, c):
+    return colored(s,c,attrs=['bold'])
+
+for n in onlyfiles:
+    if n[-3:] == '.in':
+        ins.add(n[:-3])
+    elif n[-4:] == '.ans':
+        ans.add(n[:-4])
+ins = sorted(ins)
+commands = [Popen(f'./run < test/{test_input}.in',
+                  stdout=PIPE, stderr=PIPE, shell=True) for test_input in ins]
+args = sys.argv
+timeout = 1
+if len(args) > 1:
+    timeout = int(args[1])
+count = 0
+for i in range(len(commands)):
+    try:
+        stdout, stderr = commands[i].communicate(timeout=timeout)
+        name = ins[i]
+        if stderr:
+            print(cl(f'{name}: RTE', 'magenta'))
+            lines = stderr.decode('utf-8').rstrip().split('\n')
+            if len(lines) > 3:
+                lines = lines[-3:]
+            for line in lines:
+                print(f'\t{line}')
+        else:
+            if name in ans:
+                f = open(f'test/{name}.ans')
+                correct = f.read()
+                mine = '\n'.join(line.strip() for line in stdout.decode('utf-8').split('\n'))
+                if mine.strip() != correct.strip():
+                    print(cl(f'{name}: RA', 'red'))
+                    i = 0
+                    mine = mine.split('\n')[:-1]
+                    correct = correct.split('\n')[:-1]
+                    if len(mine) > 10:
+                        mine = mine[-10:]
+                    if len(correct) > 10:
+                        correct = correct[-10:]
+                    while i < len(mine) and i < len(correct):
+                        print(cl(mine[i], 'red'))
+                        print(cl(correct[i], 'green'))
+                        i+=1 
+                else:
+                    print(cl(f'{name}: Accepted', 'green'))
+                    count += 1
+            else:
+                answer = stdout.decode('utf-8')[:-1].split('\n')
+                if len(answer) == 1:
+                    print(f'{name}: {answer[0]}')
+                else:
+                    print(f'{name}:')
+                    if len(answer) > 10:
+                        answer = answer[-10:]
+                    for line in answer:
+                        print(line)
+                count += 1
+    except TimeoutExpired:
+        print(cl(f'{ins[i]}: TLE', 'yellow'))
+if count == len(commands):
+    print(cl("All solutions passed.", 'cyan'))

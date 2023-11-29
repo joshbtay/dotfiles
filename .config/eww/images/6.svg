@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   class="ionicon"
+   viewBox="0 0 512 512"
+   version="1.1"
+   id="svg431"
+   sodipodi:docname="6.svg"
+   inkscape:version="1.2.2 (b0a8486541, 2022-12-01)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs435" />
+  <sodipodi:namedview
+     id="namedview433"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     showgrid="false"
+     showguides="false"
+     inkscape:zoom="1.1237375"
+     inkscape:cx="214.4629"
+     inkscape:cy="276.75503"
+     inkscape:window-width="933"
+     inkscape:window-height="1006"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg431" />
+  <path
+     style="color:#fafafa;fill:currentColor;stroke-linecap:square;stroke-miterlimit:10;-inkscape-stroke:none"
+     d="M 77.699219,128 C 43.794208,128 16,155.79421 16,189.69922 V 322.30078 C 16,356.20579 43.794208,384 77.699219,384 H 386.30078 C 420.20579,384 448,356.20579 448,322.30078 V 189.69922 C 448,155.79421 420.20579,128 386.30078,128 Z m 0,32 H 386.30078 C 403.03132,160 416,172.96868 416,189.69922 V 322.30078 C 416,339.03132 403.03132,352 386.30078,352 H 77.699219 C 60.968679,352 48,339.03132 48,322.30078 V 189.69922 C 48,172.96868 60.968679,160 77.699219,160 Z"
+     id="rect425" />
+  <path
+     style="color:#fafafa;fill:currentColor;stroke-linecap:square;stroke-miterlimit:10;-inkscape-stroke:none"
+     d="m 89.689453,182.92969 c -10.803233,0 -20,9.19676 -20,20 v 106.14062 c 0,10.80324 9.196767,20 20,20 l 239.006737,0 c 10.80324,0 20,-9.19676 20,-20 V 202.92969 c 0,-10.80324 -9.19676,-20 -20,-20 z"
+     id="path2019"
+     sodipodi:nodetypes="sssssssss" />
+  <path
+     style="color:#fafafa;fill:currentColor;stroke-linecap:round;stroke-miterlimit:10;-inkscape-stroke:none"
+     d="m 480,202.66992 a 16,16 0 0 0 -16,16 v 74.66016 a 16,16 0 0 0 16,16 16,16 0 0 0 16,-16 v -74.66016 a 16,16 0 0 0 -16,-16 z"
+     id="path429" />
+</svg>

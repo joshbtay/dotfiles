@@ -1,0 +1,9 @@
+#Add these lines to your bashrc:
+function kattis {
+	~/code/kattis/kattis $1
+	cd ~/code/kattis/$1
+}
+
+function passoff {
+	~/code/kattis/passoff
+}

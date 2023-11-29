@@ -1,0 +1,38 @@
+font:
+  normal:
+    family: "Droid Sans Mono"
+  offset:
+    x: 1
+    y: 1
+window:
+  opacity: 0.2
+  padding:
+    x: 20
+    y: 20
+key_bindings:
+  - { key: N, mods: Control|Shift, action: SpawnNewInstance }
+colors:
+  primary:
+    background: "#000000"
+    foreground: "#ffffff"
+  cursor:
+    text: "#1d1f21"
+    cursor: "#c5c8c6"
+  normal:
+    black: "#1d1f21"
+    red: "#ff143b"
+    green: "#19ff44"
+    yellow: "#fba922"
+    blue: "#20c1ff"
+    magenta: "#ff9aff"
+    cyan: "#29ffff"
+    white: "#ffffff"
+  bright:
+    black: "#969896"
+    red: "#cc342b"
+    green: "#19ff44"
+    yellow: "#fba922"
+    blue: "#69b1ff"
+    magenta: "#ff9aff"
+    cyan: "#29ffff"
+    white: "#ffffff"

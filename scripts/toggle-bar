@@ -1,0 +1,5 @@
+if eww graph | grep bar > /dev/null; then
+	eww close bar
+else
+	eww open bar
+fi

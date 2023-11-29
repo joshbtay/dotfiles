@@ -1,0 +1,7 @@
+sudo pamac install google-chrome hyprland alacritty neovim discord blender eww-wayland brightnessctl alacritty-themes gimp inkscape rg python-pip pavucontrol ttf-google-fonts-git openjdk-src zoom wofi iwd font-manager feh obs-studio grim slurp pycharm-community-edition wine winetricks wine-mono steam vlc intellij-idea-community-edition wl-copy wl-paste visual-studio-code-bin nemo spotifywm-git fd neofetch audacity nvm krita pulseaudio-ctl
+
+sudo snap install spotify
+
+#install swww
+
+dconf load / < gnome-settings

@@ -1,0 +1,33 @@
+#!/bin/python3
+from subprocess import *
+import sys
+from os import listdir
+from os.path import isfile, join
+from random import choice
+fname = "/home/taylor/Pictures/wallpapers/wallpaper.png"
+if len(sys.argv) > 1:
+	fname = sys.argv[1]
+	if "~" in fname:
+		fname.replace("~", "/home/taylor")
+else:
+	mypath = "/home/taylor/Pictures/wallpapers/"
+	onlyfiles = [f for f in listdir(mypath) if isfile(join(mypath, f))]
+	fname = mypath + choice(onlyfiles)
+	
+print(fname)
+Popen(["swww", "init"])
+'''
+monitors = Popen(["swww", "query"], stdout=PIPE)
+monitor_names = []
+for line in monitors.stdout:
+	line = line.decode()
+	monitor_names.append(line.split(":")[0])
+print(monitor_names)
+for monitor in monitor_names:
+	Popen(["/usr/bin/hyprctl", "hyprpaper", "wallpaper", monitor+","+fname])
+'''
+Popen(["swww", "img", fname, "--transition-step", "50", "--transition-fps", "60", "--transition-type", "wipe", "--transition-angle", "30" ])
+colors = Popen(["/home/taylor/scripts/get_colors", fname])
+colors.wait()
+update = Popen(["/home/taylor/scripts/update_color_schemes"])
+update.wait()

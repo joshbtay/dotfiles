@@ -1,0 +1,87 @@
+#!/bin/python3
+import glob
+#alacritty
+f = open("/home/taylor/.config/alacritty/alacritty.yml")
+colors = open("/home/taylor/.config/colors/current")
+lines = colors.read().strip().split("\n")
+alacritty = []
+f_lines = f.read().strip().split("\n")
+d = {}
+for line in lines:
+    a,b = line.split(":")
+    d[a] = b
+f.close()
+d["foreground"] = d["fg"]
+d["white"] = d["fg_d"]
+d["background"] = d["bg0"]
+d["magenta"] = d["purple"]
+j = 0
+bright = False
+def replace(l, c):
+    i = l.index("'")
+    o = l[0:i+1] + c + "'"
+    return o
+
+for i,l in enumerate(f_lines):
+    if "colors:" in l:
+        j = i
+    if j == 0: continue
+    line = l.strip().split(':')
+    if len(line) == 2 and l.strip()[0] != "#" and line[1]:
+        a,b = line
+        if bright and a == "black":
+            f_lines[i] = replace(l, d["grey"])
+        elif not bright and a == "white":
+            f_lines[i] = replace(l, d["grey"])
+        else:
+            f_lines[i] = replace(l, d[a])
+    elif len(line) >= 1 and line[0] == "bright": bright = True
+output = open("/home/taylor/.config/alacritty/alacritty.yml", "w")
+for line in f_lines:
+    output.write(line + "\n")
+
+
+#eww
+f = open("/home/taylor/.config/eww/eww.scss")
+lines = f.read().strip().split('\n')
+for i in range(len(lines)):
+    line = lines[i].strip()
+    if line and line[0] == '$':
+        l=lines[i].split(":")
+        if l[0][1:] in d:
+            lines[i] = l[0]+": " + d[l[0][1:]] + ";"
+f.close()
+f = open("/home/taylor/.config/eww/eww.scss", "w")
+for line in lines:
+    f.write(line + "\n")
+
+
+#svgs
+for fn in glob.glob("/home/taylor/Pictures/svgs/lightdark/*.svg"):
+    f = open(fn)
+    s=f.read()
+    light = s.replace("fill:#000000", f"fill:{d['fg_d']}")
+    light = light.replace("color:#000000", f"color:{d['fg_d']}")
+    dark = s.replace("fill:#000000", f"fill:{d['bg0']}")
+    dest = "/home/taylor/.config/eww/images/"
+    f.close()
+    fname = fn.split("/")[-1].split(".")[0]
+    f = open(dest + fname + ".svg", "w")
+    f.write(light)
+    f.close()
+    f = open(dest + fname + "-alt.svg", "w")
+    f.write(dark)
+
+for fn in glob.glob("/home/taylor/Pictures/svgs/*.svg"):
+    f = open(fn)
+    s=f.read()
+    light = s.replace("fill:#000000", f"fill:{d['fg_d']}")
+    light = light.replace("color:#000000", f"color:{d['fg_d']}")
+    dest = "/home/taylor/.config/eww/images/"
+    f.close()
+    fname = fn.split("/")[-1].split(".")[0]
+    f = open(dest + fname + ".svg", "w")
+    f.write(light)
+    f.close()
+
+

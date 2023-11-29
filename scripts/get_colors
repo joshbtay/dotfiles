@@ -1,0 +1,279 @@
+#!/bin/python3
+from PIL import Image
+from random import randint
+import colorsys
+from sklearn.cluster import KMeans, kmeans_plusplus, DBSCAN
+from sklearn.utils import shuffle
+import numpy as np
+import sys
+if len(sys.argv)==1:
+    print("Need an input image")
+    exit(1)
+RESET = '\033[0m'
+def get_color_escape(r, g, b, background=False):
+
+    return '\033[{};2;{};{};{}m'.format(48 if background else 38, int(r), int(g), int(b))
+def get_hls_color(t, background=False):
+    t = np.array(colorsys.hsv_to_rgb(*t))*255
+    return get_color_escape(*t, background)
+config_dir = "/home/taylor/.config/colors/"
+
+
+
+
+im = Image.open(sys.argv[1])
+array=np.asarray(im)
+h,w,_ = array.shape
+s = set()
+n_clusters = 10
+average_val = 0
+total_pixels = 0
+for i in range(0,h,h//100):
+    for j in range(0,w,w//100):
+        t=np.array([0.0,0.0,0.0])
+        c = 0
+        t+=array[i][j]
+        average_val += np.average(array[i][j])
+        c+=1
+         
+        t/=c
+        total_pixels += c
+        s.add(tuple(t))
+s=list(map(np.array, s))
+cluster = DBSCAN(eps=3, min_samples=1).fit(s)
+#image_array_sample = shuffle(s, random_state=0, n_samples=500)
+#kmeans = KMeans(n_clusters=100, random_state=0).fit(
+#    image_array_sample
+#)
+labels=cluster.labels_
+#labels = kmeans.predict(s)
+
+
+
+
+
+n_clusters = max(labels)+1
+n_colors = 10
+buckets = [[] for _ in range(n_clusters)]
+for i in range(len(s)):
+    if labels[i] == -1: continue
+    buckets[labels[i]].append(s[i])
+colors = []
+for i in range(n_clusters):
+    t=np.array([0.0,0.0,0.0])
+    for j in range(len(buckets[i])):
+        hsv = colorsys.rgb_to_hls(*buckets[i][j]/255)
+        t[0]+=hsv[0]
+        t[1]+=hsv[1]
+        t[2] = max(hsv[2],t[2])
+    t[0]/=len(buckets[i])
+    t[1]/=len(buckets[i])
+    colors.append(t)
+colors.sort(key=lambda x: x[0], reverse=True)
+rainbow_labels = ["red", "orange", "yellow", "green", "cyan", "blue", "indigo", "purple", "darks", "white", "grey", "black",]
+rainbow = [[] for _ in range(len(rainbow_labels))]
+dividors = [0.006,0.09,0.20,0.44,0.54,0.76,0.84,0.91]
+light_mode = average_val / total_pixels/255 > 0.52
+if len(sys.argv) > 2:
+    if "dark" in sys.argv[2:]:
+        light_mode = False
+    elif "light" in sys.argv[2:]:
+        light_mode = True
+for i,t in enumerate(colors):
+    p = np.array(colorsys.rgb_to_hsv(*colorsys.hls_to_rgb(*t)))
+    if p[1] < 0.4:
+        if p[1] > .2: continue
+        if p[2] >= .7:
+            rainbow[-3].append(p)
+        elif p[2] >= .3:
+            rainbow[-2].append(p)
+        else:
+            rainbow[-1].append(p)
+    elif t[1] < 0.2:
+        rainbow[-4].append(p)
+        
+    else:
+        for j in range(len(dividors)):
+            if t[0] <= dividors[j]:
+                rainbow[j].append(p)
+                break
+        else:
+            rainbow[0].append(p)
+
+
+
+
+for i in range(len(rainbow)):
+    rainbow[i].sort(key=lambda x: -x[2]-x[1] if light_mode else x[2]+x[1])
+rainbow[-3].sort(key=lambda x: abs(0.7-x[0])*x[2])
+dark_hue = 0.0
+for i in range(len(rainbow[-4])):
+    dark_hue += rainbow[-4][i][0]
+if dark_hue != 0.0:
+    dark_hue/=len(rainbow[-4])
+rainbow[-4].sort(key=lambda x: -abs(dark_hue - x[0]))
+file = "light" if light_mode else "dark"
+f = open(config_dir+file)
+current_colors = f.read().strip().split('\n')
+d = {}
+for i,c in enumerate(current_colors):
+    a,b = c.split(":")
+    d[a]=b
+final_colors = [None]*len(rainbow)
+for i in range(len(rainbow)):
+    if rainbow[i]:
+        final_colors[i] = rainbow[i][-1]
+
+def interpolate(a, b, fraction):
+    new_color = a*(1-fraction)+b*fraction
+    argb = np.array(colorsys.hsv_to_rgb(*a))
+    brgb = np.array(colorsys.hsv_to_rgb(*b))
+    nc_rgb = argb*(1-fraction)+brgb*fraction
+    nc_hsv = np.array(colorsys.rgb_to_hsv(*nc_rgb))
+    output = nc_hsv*.3+new_color*.7
+    return output
+
+for i in range(8):
+    if final_colors[i] is not None:
+        final_colors[i][2] = max(final_colors[i][2], 0.75)
+        final_colors[i][1] = min(final_colors[i][1], 0.9)
+
+last_i=None
+for i in range(8):
+    if final_colors[i%8] is None and last_i is not None:
+        for j in range(i+1, 8):
+            if final_colors[j%8] is not None and j-i < 3:
+                final_colors[i%8] = interpolate(final_colors[last_i%8], final_colors[j%8], (i-last_i)/(j-last_i))
+                break
+    if final_colors[i%8] is not None:
+        last_i = i
+colors.sort(key=lambda x: x[2])
+if final_colors[-3] is None:
+    white = colors[0]
+    white[1] = max(white[1], .8)
+    white[2] = min(white[2], .3)
+    final_colors[-3]=np.array(colorsys.rgb_to_hsv(*colorsys.hls_to_rgb(*white)))
+if final_colors[-2] is None:
+    final_colors[-2]=np.array(colorsys.rgb_to_hsv(*colorsys.hls_to_rgb(*colors[0])))
+if final_colors[-1] is None:
+    final_colors[-1]=np.array(colorsys.rgb_to_hsv(*colorsys.hls_to_rgb(*colors[0])))
+colors.sort(key=lambda x: x[1])
+if final_colors[-4] is None:
+    final_colors[-4]=np.array(colorsys.rgb_to_hsv(*colorsys.hls_to_rgb(*colors[0])))
+
+final_colors[-2][2] = max(min(final_colors[-2][2], 0.6),0.4)
+final_colors[-1][2] = max(min(final_colors[-1][2], 0.12),0.0)
+#final_colors[-4][1] = max(min(final_colors[-4][2], 0.8), 0.6)
+final_colors[-4][2] = max(min(final_colors[-4][2], 0.27), 0.18)
+#final_colors[-3][1] = max(min(final_colors[-3][1], 0.35), 0.15)
+longest = 0
+main_color = None
+for i in range(8):
+    if longest < len(rainbow[i]):
+        longest = len(rainbow[i])
+        main_color = final_colors[i]
+while any(x is None for x in final_colors):
+    for index in range(len(final_colors)):
+        if final_colors[index] is None: break
+    biggest = 0
+
+    biggest_i=0
+    for i in range(8):
+        if biggest < len(rainbow[i]):
+            biggest = len(rainbow[i])
+            biggest_i = i
+    i=biggest_i
+    row = rainbow[i]
+    dist = 0
+    di = 0
+    for j in range(biggest-1):
+        for k in range(j+1, biggest):
+            if dist < abs(row[j][0]-row[k][0]):
+                dist = np.linalg.norm(row[j]-row[k])
+                di=(j,k)
+    other=rainbow[index]
+    j,k=di
+    removal=[]
+    for p,m in enumerate(row):
+        if np.linalg.norm(m-row[j]) > np.linalg.norm(m-row[k]):
+            other.append(m)
+            removal.append(p)
+    for p in removal[::-1]:
+        row.pop(p)
+    final_colors[index]=rainbow[index][0]
+    
+
+'''
+for i in range(len(rainbow)):
+    print(rainbow_labels[i])
+    for j in range(len(rainbow[i])):
+        print(get_hls_color(rainbow[i][j], True), "",RESET, end='')
+    print()
+'''
+for i in range(8):
+    if final_colors[i] is not None:
+        final_colors[i][2] = max(final_colors[i][2], 0.70)
+        final_colors[i][1] = max(final_colors[i][1], 0.3)
+
+
+def clamp(x): 
+   return max(0, min(x, 255))
+def hsv_to_hex(hsv):
+    r,g,b = map(int, np.array(colorsys.hsv_to_rgb(*hsv))*255)
+    return "#{0:02x}{1:02x}{2:02x}".format(clamp(r), clamp(g), clamp(b))
+for color in final_colors:
+    if color is not None:
+        print(get_hls_color(color, True), "   ", RESET, end='')
+print()
+d["white"] = hsv_to_hex(final_colors[-3])
+if main_color is not None:
+    d["main_color"] = hsv_to_hex(main_color)
+if light_mode:
+    for i in range(8):
+        final_colors[i][2] = min(0.7, final_colors[i][2])
+    final_colors[-3][2] = min(final_colors[-3][2]+0.05, 1)
+    final_colors[3][2] -= 0.2
+    d["bg3"] = hsv_to_hex(final_colors[-3])
+    final_colors[-3][2] -= 0.03
+    d["bg2"] = hsv_to_hex(final_colors[-3])
+    final_colors[-3][2] -= 0.03
+    d["bg1"] = hsv_to_hex(final_colors[-3])
+    final_colors[-3][2] -= 0.03
+    d["bg0"] = hsv_to_hex(final_colors[-3])
+    final_colors[-3][2] -= 0.03
+    d["bg_d"] = hsv_to_hex(final_colors[-3])
+    d["black"] = hsv_to_hex(final_colors[-1])
+    d["fg"] = hsv_to_hex(final_colors[-4])
+    d["fg_d"] = d["fg"]
+else:
+    for i in range(8):
+        final_colors[i][2] = max(final_colors[i][2], 0.9)
+    final_colors[-4][2] = max(final_colors[-4][2]-0.03, 0)
+    d["bg_d"] = hsv_to_hex(final_colors[-4])
+    final_colors[-4][2] += 0.03
+    d["bg0"] = hsv_to_hex(final_colors[-4])
+    final_colors[-4][2] += 0.03
+    d["bg1"] = hsv_to_hex(final_colors[-4])
+    final_colors[-4][2] += 0.03
+    d["bg2"] = hsv_to_hex(final_colors[-4])
+    final_colors[-4][2] += 0.03
+    d["bg3"] = hsv_to_hex(final_colors[-4])
+    final_colors[-4][2] += 0.03
+    d["black"] = hsv_to_hex(final_colors[-1])
+    white_cp = final_colors[-3].copy()
+    white_cp[2] -= 0.2
+    d["fg"] = hsv_to_hex(white_cp)
+    d["fg_d"] = d["white"]
+    
+
+d["grey"] = hsv_to_hex(final_colors[-2])
+final_colors[-2][2] += .1
+d["light_grey"] = hsv_to_hex(final_colors[-2])
+for i in range(8):
+    d[rainbow_labels[i]] = hsv_to_hex(final_colors[i])
+    final_colors[i][2] -= .24
+    d["dark_"+rainbow_labels[i]] = hsv_to_hex(final_colors[i])
+
+outfile = open(config_dir + "current", "w")
+for key in d:
+    outfile.write(key+":"+d[key]+"\n")

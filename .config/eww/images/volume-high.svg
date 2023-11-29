@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   viewBox="0 0 640 457.8432"
+   version="1.1"
+   id="svg4"
+   sodipodi:docname="volume-high.svg"
+   width="640"
+   height="457.8432"
+   inkscape:version="1.2.2 (b0a8486541, 2022-12-01)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs8" />
+  <sodipodi:namedview
+     id="namedview6"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     showgrid="false"
+     inkscape:zoom="1.1477404"
+     inkscape:cx="291.00657"
+     inkscape:cy="250.92782"
+     inkscape:window-width="933"
+     inkscape:window-height="1006"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg4" />
+  <!--! Font Awesome Pro 6.4.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) Copyright 2023 Fonticons, Inc. -->
+  <path
+     d="M 533.6,5.4507062 C 598.5,58.250706 640,138.75071 640,228.95071 c 0,90.2 -41.5,170.8 -106.4,223.5 -10.3,8.4 -25.4,6.8 -33.8,-3.5 -8.4,-10.3 -6.8,-25.4 3.5,-33.8 54.2,-44 88.7,-111 88.7,-186.2 0,-75.2 -34.5,-142.200004 -88.7,-186.300004 -10.3,-8.4 -11.8,-23.5 -3.5,-33.7999998 8.3,-10.3 23.5,-11.8 33.8,-3.5 z M 473.1,79.950706 c 43.2,35.200004 70.9,88.900004 70.9,149.000004 0,60.1 -27.7,113.8 -70.9,149 -10.3,8.4 -25.4,6.8 -33.8,-3.5 -8.4,-10.3 -6.8,-25.4 3.5,-33.8 32.5,-26.4 53.2,-66.6 53.2,-111.7 0,-45.1 -20.7,-85.3 -53.2,-111.8 -10.3,-8.4 -11.8,-23.500004 -3.5,-33.800004 8.3,-10.3 23.5,-11.8 33.8,-3.5 z m -60.5,74.500004 c 21.5,17.6 35.4,44.4 35.4,74.5 0,30.1 -13.9,56.9 -35.4,74.5 -10.3,8.4 -25.4,6.8 -33.8,-3.5 -8.4,-10.3 -6.8,-25.4 3.5,-33.8 10.8,-8.8 17.7,-22.2 17.7,-37.2 0,-15 -6.9,-28.4 -17.7,-37.3 -10.3,-8.4 -11.8,-23.5 -3.5,-33.8 8.3,-10.3 23.5,-11.8 33.8,-3.5 z M 301.1,7.7507062 C 312.6,12.950706 320,24.350706 320,36.950706 V 420.95071 c 0,12.6 -7.4,24 -18.9,29.2 -11.5,5.2 -25,3.1 -34.4,-5.3 l -134.9,-119.9 H 64 c -35.3,0 -64,-28.7 -64,-64 v -64 c 0,-35.3 28.7,-64 64,-64 h 67.8 L 266.7,13.050706 c 9.4,-8.3999998 22.9,-10.3999998 34.4,-5.2999998 z"
+     id="path2"
+     style="fill:#fafafa" />
+</svg>

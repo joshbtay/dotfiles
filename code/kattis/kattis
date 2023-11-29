@@ -1,0 +1,24 @@
+#!/bin/bash
+PROB=$1
+echo problem: $PROB
+[ -z "$PROB" ] && { echo 'No problem selected'; exit 1; }
+[ ! -d "/tmp/kattis/" ] && mkdir /tmp/kattis
+[ -f "/tmp/kattis/samples.zip" ] && rm /tmp/kattis/samples.zip
+echo downloading
+wget https://open.kattis.com/problems/$PROB/file/statement/samples.zip -P /tmp/kattis/ || { echo 'wget failed' ; exit 1; }
+[ ! -d "~/code/kattis/$PROB/test/" ] && mkdir ~/code/kattis/$PROB/test
+[ ! -f "~/code/kattis/$PROB/run.py" ] && cat ~/code/comp/problem_template.py > ~/code/kattis/$PROB/run.py
+chmod +x ~/code/kattis/$PROB/run.py
+unzip -o /tmp/kattis/samples.zip -d ~/code/kattis/$PROB/test/ > /dev/null
+a=1
+for i in ~/code/kattis/$PROB/test/*.in; do
+	mv $i ~/code/kattis/$PROB/test/$a.in
+	((a++))
+done
+a=1
+for i in ~/code/kattis/$PROB/test/*.ans; do
+	mv $i ~/code/kattis/$PROB/test/$a.ans
+	((a++))
+done
+rm /tmp/kattis/samples.zip
+nvim + ~/code/kattis/$PROB/run.py
