@@ -1,5 +1,9 @@
-to install:
+to install, will overwrite settings:
 ```
-git clone --recurse-submodules git@github.com:joshbtay/dotfiles.git
+cd ~/
+git init .
+git remote add -t \* -f origin git@github.com:joshbtay/dotfiles.git
+git checkout master
+git pull --recurse-submodules
+./install
 ```
-
