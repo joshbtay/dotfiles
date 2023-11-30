@@ -11,6 +11,7 @@ git pull origin master --recurse-submodules
 ```
 
 <h4>To update:</h4>
+
 ```
 cd ~/
 git submodule update
