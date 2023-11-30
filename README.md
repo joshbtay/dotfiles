@@ -1,9 +1,10 @@
-to install, will overwrite settings:
+<h3>Installation</h3> (Caution: will overwrite many settings!)
+
 ```
 cd ~/
 git init .
-git remote add -t \* -f origin git@github.com:joshbtay/dotfiles.git
+git remote add -t \* -f origin https://github.com/joshbtay/dotfiles.git
 git checkout master
-git pull --recurse-submodules
+rm .zshrc .zhistory & git pull origin master --recurse-submodules
 ./install
 ```
