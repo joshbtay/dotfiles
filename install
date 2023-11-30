@@ -1,6 +1,6 @@
 sudo sed -Ei '/EnableAUR/s/^#//' /etc/pamac.conf
 
-sudo pamac install google-chrome hyprland alacritty snapd neovim discord blender eww-wayland brightnessctl alacritty-themes gimp inkscape rg python-pip pavucontrol ttf-google-fonts-git openjdk-src zoom wofi iwd font-manager feh obs-studio grim slurp pycharm-community-edition wine winetricks wine-mono steam vlc intellij-idea-community-edition wl-copy wl-paste visual-studio-code-bin nemo spotifywm-git fd neofetch audacity nvm krita pulseaudio-ctl --no-confirm
+sudo pamac install google-chrome hyprland alacritty snapd neovim discord blender eww-wayland brightnessctl alacritty-themes gimp inkscape ripgrep python-pip pavucontrol ttf-google-fonts-git openjdk-src zoom wofi iwd font-manager feh obs-studio grim slurp pycharm-community-edition wine winetricks wine-mono steam vlc intellij-idea-community-edition wl-copy wl-paste visual-studio-code-bin nemo spotifywm-git fd neofetch audacity nvm krita pulseaudio-ctl --no-confirm
 
 sudo snap install spotify
 
