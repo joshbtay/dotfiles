@@ -5,8 +5,11 @@ cd ~/
 git init .
 git remote add -t \* -f origin https://github.com/joshbtay/dotfiles.git
 git checkout master
+git branch --set-upstream-to=origin/master master
+git submodule init
+git submodule update
 mv .zshrc .zshrc_backup
-git pull origin master --recurse-submodules
+git pull --recurse-submodules
 ./install
 ```
 
@@ -14,6 +17,5 @@ git pull origin master --recurse-submodules
 
 ```
 cd ~/
-git submodule update
-git pull origin master --recurse-submodules
+git pull --recurse-submodules
 ```
