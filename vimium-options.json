@@ -1,0 +1,15 @@
+{
+  "hideHud": true,
+  "newTabUrl": "pages/blank.html",
+  "scrollStepSize": 100,
+  "grabBackFocus": true,
+  "searchEngines": "w: https://www.wikipedia.org/w/index.php?title=Special:Search&search=%s Wikipedia\n\n# More examples.\n#\n# (Vimium supports search completion Wikipedia, as\n# above, and for these.)\n#\n# g: https://www.google.com/search?q=%s Google\n# l: https://www.google.com/search?q=%s&btnI I'm feeling lucky...\n# y: https://www.youtube.com/results?search_query=%s Youtube\n# gm: https://www.google.com/maps?q=%s Google maps\n# b: https://www.bing.com/search?q=%s Bing\nd: https://duckduckgo.com/?q=%s DuckDuckGo\n# az: https://www.amazon.com/s/?field-keywords=%s\n# qw: https://www.qwant.com/?q=%s Qwant",
+  "settingsVersion": "2.0.5",
+  "userDefinedLinkHintCss": "div > .vimiumHintMarker {\n  padding: 6px 8px;\n  background-color: #ff5985;\n  border: 0;\n  border-radius: 4px;\n  box-shadow: none;\n  background-image: none;\n  opacity: 0;\n  transform: translate(0, 2vh);\n  animation: smooth-appear .08s linear forwards;\n}\n\ndiv > .vimiumHintMarker span {\n  font-size: 12px;\n  text-shadow: none;\n  color: #FFFFFF;\n  transition: all .2s;\n}\n\ndiv > .vimiumHintMarker > .matchingCharacter {\n  color: #ff5985;\n}\n\n\n@keyframes smooth-appear {\n  to{\n    transform: translate(0, 0);\n    opacity:1;\n  }\n}\n\n\n\n\n\ndiv > .vimiumHintMarker:nth-child(20n+1){\n  animation-delay: 0.01s;\n}\ndiv > .vimiumHintMarker:nth-child(20n+2){\n  animation-delay: 0.02s;\n}\ndiv > .vimiumHintMarker:nth-child(20n+3){\n  animation-delay: 0.03s;\n}\ndiv > .vimiumHintMarker:nth-child(20n+4){\n  animation-delay: 0.04s;\n}\ndiv > .vimiumHintMarker:nth-child(20n+5){\n  animation-delay: 0.05s;\n}\ndiv > .vimiumHintMarker:nth-child(20n+6){\n  animation-delay: 0.06s;\n}\ndiv > .vimiumHintMarker:nth-child(20n+7){\n  animation-delay: 0.07s;\n}\ndiv > .vimiumHintMarker:nth-child(20n+8){\n  animation-delay: 0.08s;\n}\ndiv > .vimiumHintMarker:nth-child(20n+9){\n  animation-delay: 0.09s;\n}\ndiv > .vimiumHintMarker:nth-child(20n+10){\n  animation-delay: 0.1s;\n}\ndiv > .vimiumHintMarker:nth-child(20n+11){\n  animation-delay: 0.11s;\n}\ndiv > .vimiumHintMarker:nth-child(20n+12){\n  animation-delay: 0.12s;\n}\ndiv > .vimiumHintMarker:nth-child(20n+13){\n  animation-delay: 0.13s;\n}\ndiv > .vimiumHintMarker:nth-child(20n+14){\n  animation-delay: 0.14s;\n}\ndiv > .vimiumHintMarker:nth-child(20n+15){\n  animation-delay: 0.15s;\n}\ndiv > .vimiumHintMarker:nth-child(20n+16){\n  animation-delay: 0.16s;\n}\ndiv > .vimiumHintMarker:nth-child(20n+17){\n  animation-delay: 0.17s;\n}\ndiv > .vimiumHintMarker:nth-child(20n+18){\n  animation-delay: 0.18s;\n}\ndiv > .vimiumHintMarker:nth-child(20n+19){\n  animation-delay: 0.19s;\n}",
+  "exclusionRules": [
+    {
+      "passKeys": "jkl",
+      "pattern": "https?://www.youtube.com/*"
+    }
+  ]
+}
