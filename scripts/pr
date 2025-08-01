@@ -1,0 +1,26 @@
+#!/bin/zsh
+if git status &>/dev/null; then
+  current_branch=$(git rev-parse --abbrev-ref HEAD)
+  if [[ "$current_branch" = "main" ]]; then
+    echo "Can't open a PR on main!"
+    exit 1
+  else
+    echo "Opening PR"
+    git push
+    template="$(git rev-parse --show-toplevel)/.github/pull_request_template.md"
+    filled_template="/tmp/temp_pr_body"
+    [ -f $template ] && cp $template $filled_template
+    vim $filled_template
+    pr_output=$(gh pr create --body-file $filled_template --fill)
+    # Extract the URL from the output and copy it to the clipboard
+    pr_url=$(echo "$pr_output" | grep -o 'https://github\.com[^ ]*')
+    echo "PR created: $pr_url"
+
+    # Copy the PR URL to the clipboard (macOS)
+    echo "$pr_url" | pbcopy
+    echo "PR URL copied to clipboard!"
+  fi
+else
+  echo "Not a git repository"
+  exit 1
+fi

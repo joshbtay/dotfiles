@@ -1,0 +1,19 @@
+#!/bin/zsh
+
+# Set your MySQL credentials
+USER="root"
+PASSWORD=""
+HOST="127.0.0.1"
+
+# Check if a query is passed as an argument
+if [ -z "$1" ]; then
+  echo "No query provided."
+  echo "Usage: query \"SELECT * FROM Project WHERE id = 1;\""
+  exit 1
+fi
+
+# Construct the query
+QUERY="$1"
+
+# Execute the query using the MySQL command
+mysql -u $USER -h $HOST -e "$QUERY" -P 3309 -D roofworx

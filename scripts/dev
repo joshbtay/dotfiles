@@ -1,0 +1,2 @@
+#!/bin/zsh
+kitty -1 -e zsh -c "cd /Users/josh/remi; pnpm dev:next"

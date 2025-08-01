@@ -1,0 +1,27 @@
+#!/bin/zsh
+
+
+if [ $# -eq 0 ]
+  then
+    filter=''
+  else
+    filter=$1
+fi
+
+work_dir=$1$(awk -v filter="$filter" '$0 ~ "^" filter {print substr($0, length(filter) + 1)}' /Users/josh/code/findex/index | fzf  --keep-right --no-hscroll --no-scrollbar --no-separator --layout=reverse --padding=2 --color='light,bg+:-1')
+
+
+if [ -z "$work_dir" ]; then
+  exit 0
+fi
+work_dir="/Users/josh/$work_dir"
+if [ -f "$work_dir" ]; then
+	file=$(basename "$work_dir")
+	work_dir=$(dirname "$work_dir")
+	cd "$work_dir"
+	/Users/josh/scripts/vim "$file"
+else
+	cd "$work_dir"
+	/Users/josh/scripts/fopen "$work_dir"
+	zsh
+fi

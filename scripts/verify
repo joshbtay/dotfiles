@@ -1,0 +1,27 @@
+#!/bin/bash
+
+# Loop through all .in files
+for infile in *.in; do
+	# Extract the base name (remove the extension .in)
+	base_name="${infile%.in}"
+
+	# Define the corresponding .ans file
+	ans_file="${base_name}.ans"
+
+	# Run the python script with the input file and store the output in a temp file
+	output=$(python3 run.py <"$infile")
+
+	# Read the expected answer from the .ans file
+	expected_output=$(cat "$ans_file")
+
+	# Compare the output and expected answer
+	if [ "$output" == "$expected_output" ]; then
+		echo "Test $infile passed."
+	else
+		echo "Test $infile failed."
+		echo "Expected:"
+		echo "$expected_output"
+		echo "Got:"
+		echo "$output"
+	fi
+done
