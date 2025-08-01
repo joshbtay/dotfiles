@@ -5,7 +5,7 @@ if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]
   source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
 fi
 
-
+PATH="/Users/josh/scripts/:$PATH"
 
 #### HISTORY
 
@@ -36,6 +36,28 @@ bindkey -e
 alias vi='nvim'
 alias py='pypy3'
 alias pypy='pypy3'
+alias ..="cd .."
+alias x="exit"
+
+# Git Aliases
+alias add="git add"
+alias commit="git commit"
+alias pull="git pull"
+alias stat="git diff --shortstat"
+alias status="git status"
+alias gdiff="git diff HEAD"
+alias vdiff="git difftool HEAD"
+alias log="git log --color --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit"
+alias cfg="git --git-dir=$HOME/dotfiles/ --work-tree=$HOME"
+alias push="git push"
+alias stash="git stash"
+alias g="lazygit"
+alias co="git checkout"
+alias ca="git add . && git commit "
+alias ssh="TERM=xterm-256color ssh"
+alias pd="pushd"
+alias od="popd"
+
 export EDITOR=nvim
 
 export AUTO_NOTIFY_THRESHOLD=20
