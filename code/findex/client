@@ -1,0 +1,21 @@
+#!/opt/homebrew/bin/python3
+import socket
+from sys import argv
+from os import path
+
+# Create a UDS socket
+sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+key = path.abspath(argv[1])
+
+# Connect the socket to the port where the server is listening
+server_address = "/Users/josh/code/findex/socket"
+try:
+    sock.connect(server_address)
+except socket.error:
+    print("Could not connect to server. Is it running?")
+    exit(1)
+
+try:
+    sock.sendall(key.encode("utf-8"))
+finally:
+    sock.close()

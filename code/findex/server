@@ -1,0 +1,148 @@
+#!/opt/homebrew/bin/python3
+import socket
+import os
+from time import time
+from collections import defaultdict, deque
+
+MAX_DEPTH = 10
+
+d = defaultdict(lambda: [0.0, 0])
+home_dir = "/Users/josh"
+script_dir = home_dir + "/code/findex"
+socket_address = script_dir + "/socket"
+delim = ":"
+dir_filters = {
+    ".git",
+    ".idea",
+    "__pycache__",
+    "node_modules",
+    "venv",
+    "Library",
+    ".cache",
+    ".aws-sam",
+    ".Trash",
+    ".npm",
+    ".vscode",
+    ".android",
+    "mason",
+    ".zsh_sessions",
+    "Music",
+    "Movies",
+    "Pictures",
+    "Public",
+    ".docker",
+    ".next",
+    ".turbo",
+    ".expo",
+}
+
+ban_filters = [
+    ".local/share/nvim",
+    ".local/state/nvim",
+]
+
+
+def saveState():
+    f = open(script_dir + "/state", "w")
+    for k, v in list(d.items()):
+        if v[0] > 0:
+            if not os.path.exists(k):
+                print("deleting", k)
+                del d[k]
+            else:
+                f.write(f"{k}{delim}{v[0]}{delim}{v[1]}\n")
+    f.close()
+
+
+def loadState():
+    f = open(script_dir + "/state", "r")
+    print("loading state")
+    for line in f:
+        line = line.strip()
+        if line == "":
+            continue
+        k = line[: line.rfind(delim, 0, line.rfind(delim))]
+        a, b = line.split(delim)[-2:]
+        d[k] = [float(a), int(b)]
+    f.close()
+
+
+def writeIndex():
+    o = []
+    q = deque()
+    q.append(home_dir)
+    count = 0
+    q.append(None)
+    while q:
+        dir = q.popleft()
+        if count > MAX_DEPTH:
+            break
+        if dir is None:
+            count += 1
+            q.append(None)
+            continue
+        if os.path.islink(dir):
+            continue
+        for f in os.listdir(dir):
+            if f in dir_filters:
+                continue
+            path = os.path.join(dir, f)
+            for key in ban_filters:
+                if key in path:
+                    break
+            else:
+                if os.path.isdir(path):
+                    q.append(path)
+                    o.append(path + "/")
+                else:
+                    o.append(path)
+    f = open(script_dir + "/index", "w")
+    x = {a: i for i, a in enumerate(sorted(o, key=lambda z: d[z][0], reverse=True))}
+    y = {a: i for i, a in enumerate(sorted(o, key=lambda z: d[z][1], reverse=True))}
+    o.sort(key=lambda z: x[z] * 0.7 + y[z] * 0.3)
+    for line in o:
+        output = line.replace(home_dir + "/", "")
+        f.write(f"{output}\n")
+    f.close()
+
+
+def increment(key):
+    d[key] = [time(), d[key][1] + 1]
+
+
+loadState()
+# Make sure the socket does not already exist
+try:
+    os.unlink(socket_address)
+except OSError:
+    if os.path.exists(socket_address):
+        raise
+
+sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+sock.setblocking(False)
+
+sock.bind(socket_address)
+sock.listen(1)
+t = time()
+first = True
+while True:
+    # save state
+    if time() - t > 5 or first:
+        t = time()
+        first = False
+        saveState()
+        writeIndex()
+
+    # Wait for a connection
+    try:
+        connection, client_address = sock.accept()
+        while True:
+            data = connection.recv(2048).decode("utf-8")
+            if data:
+                increment(data)
+                pass
+                # connection.sendall(data)
+            else:
+                break
+    except BlockingIOError:
+        pass
