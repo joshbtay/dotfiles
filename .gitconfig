@@ -1,0 +1,15 @@
+[init]
+	defaultBranch = main
+[user]
+	name = Josh Taylor
+	username = joshbtay
+	email = joshbtay@gmail.com
+[push]
+	autoSetupRemote = true
+[diff]
+	tool = vscode
+[difftool "vscode"]
+	cmd = code --wait --diff $LOCAL $REMOTE
+[alias]
+	stashu = "!git stash push -S; git stash -u; git stash pop --index stash@{1}"
+	stashi = "!git stash push -S"
