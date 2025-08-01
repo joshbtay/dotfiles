@@ -1,0 +1,34 @@
+{
+  "includeCoAuthoredBy": false,
+  "permissions": {
+    "allow": [
+      "Bash(pnpm:*)",
+      "Bash(rg:*)",
+      "Read(find:*)",
+      "Read(grep:*)",
+      "Bash(echo:*)",
+      "Bash(pbcopy:*)",
+      "Bash(git checkout:*)",
+      "Bash(git commit:*)",
+      "Bash(git add:*)",
+      "Bash(git pull:*)",
+      "Bash(git stash:*)",
+      "Bash(pnpm dev:scripts:*)",
+      "Bash(node:*)",
+      "Bash(gh pr diff:*)",
+      "Bash(gh pr view:*)",
+      "Bash(pnpm:*)",
+      "Bash(pnpm run:*)",
+      "Bash(pnpm type-check:*)"
+    ],
+    "deny": [],
+    "defaultMode": "acceptEdits",
+    "additionalDirectories": [
+      "/tmp/",
+      "/Users/josh/"
+    ]
+  },
+  "feedbackSurveyState": {
+    "lastShownTime": 1753977073448
+  }
+}

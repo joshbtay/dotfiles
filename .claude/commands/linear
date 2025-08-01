@@ -1,0 +1,15 @@
+## Command name: linear
+
+- use linear api key in ~/.env
+- Make sure to be on main and pull
+- read the changes that are not yet committed to main (in the git diff including untracked files)
+- you will need to summarize those changes to make a title, and then you will need to retroactively decide on a brief (2-3 sentence) description that would explain the need for this issue to be completed in the first place.
+- modify the body of /Users/josh/linear-request.json to be the body of the curl request to create a linear issue
+- create a new linear issue in the Platform team using curl
+- assign it to me
+- set the status as "Backlog"
+- Use the git branch, formatted as josh/pla-<issue_id><title-separated-by-hyphens> to checkout and commit these changes
+
+Platform team id: f7af2846-4059-489b-8fa4-a5ae5e0caea9
+backlog state id: dea387d8-b4d0-48f2-a58a-b70b6a4281dd
+user id: 70b781ce-2b23-4079-9e7e-975104084a1b
