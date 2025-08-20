@@ -1,6 +1,5 @@
 vim.g.mapleader = " "
 vim.g.maplocalleader = " "
-
 vim.g.have_nerd_font = true
 
 vim.opt.number = true
@@ -171,6 +170,7 @@ require("lazy").setup({
 			spec = {
 				{ "<leader>c", group = "[C]ode", mode = { "n", "x" } },
 				{ "<leader>d", group = "[D]ocument" },
+				{ "<leader>g", group = "[G]it" },
 				{ "<leader>r", group = "[R]ename" },
 				{ "<leader>s", group = "[S]earch" },
 				{ "<leader>w", group = "[W]orkspace" },
@@ -251,7 +251,9 @@ require("lazy").setup({
 			local builtin = require("telescope.builtin")
 			vim.keymap.set("n", "<leader>sh", builtin.help_tags, { desc = "[S]earch [H]elp" })
 			vim.keymap.set("n", "<leader>sk", builtin.keymaps, { desc = "[S]earch [K]eymaps" })
-			vim.keymap.set("n", "<leader>sf", builtin.find_files, { desc = "[S]earch [F]iles" })
+			vim.keymap.set("n", "<leader>sf", function()
+				builtin.find_files({ hidden = true })
+			end, { desc = "[S]earch [F]iles (with hidden)" })
 			vim.keymap.set("n", "<leader>ss", builtin.builtin, { desc = "[S]earch [S]elect Telescope" })
 			vim.keymap.set("n", "<leader>sw", builtin.grep_string, { desc = "[S]earch current [W]ord" })
 			vim.keymap.set("n", "<leader>sg", builtin.live_grep, { desc = "[S]earch by [G]rep" })
@@ -283,6 +285,17 @@ require("lazy").setup({
 				builtin.find_files({ cwd = vim.fn.stdpath("config") })
 			end, { desc = "[S]earch [N]eovim files" })
 		end,
+	},
+	-- In your plugins/init.lua or a dedicated diffview.lua file within lua/plugins/
+	{
+		{
+			"sindrets/diffview.nvim",
+			dependencies = {
+				-- nvim-web-devicons is a common dependency for icon support
+				{ "nvim-tree/nvim-web-devicons", lazy = true },
+			},
+			vim.keymap.set("n", "<leader>gd", "<cmd>DiffviewOpen<CR>", { desc = "[D]iff" }),
+		},
 	},
 
 	-- LSP Plugins
@@ -521,8 +534,7 @@ require("lazy").setup({
 				--
 				-- But for many setups, the LSP (`ts_ls`) will work just fine
 				ts_ls = {},
-				--
-
+				prismals = {},
 				lua_ls = {
 					-- cmd = { ... },
 					-- filetypes = { ... },
@@ -574,7 +586,25 @@ require("lazy").setup({
 			})
 		end,
 	},
-
+	{
+		"kristijanhusak/vim-dadbod-ui",
+		dependencies = {
+			{ "tpope/vim-dadbod", lazy = true },
+			{ "kristijanhusak/vim-dadbod-completion", ft = { "sql", "mysql", "plsql" }, lazy = true }, -- Optional
+		},
+		cmd = {
+			"DBUI",
+			"DBUIToggle",
+			"DBUIAddConnection",
+			"DBUIFindBuffer",
+		},
+		init = function()
+			-- Your DBUI configuration
+			vim.g.db_ui_use_nerd_fonts = 1
+			-- keymap to open DBUI
+			vim.keymap.set("n", "<leader>b", "<cmd>DBUIToggle<CR>", { desc = "Data[B]ase Browser" })
+		end,
+	},
 	{ -- Autoformat
 		"stevearc/conform.nvim",
 		event = { "BufWritePre" },
@@ -612,6 +642,7 @@ require("lazy").setup({
 				--
 				-- You can use 'stop_after_first' to run the first available formatter from the list
 				javascript = { "prettierd", "prettier", stop_after_first = true },
+				typescript = { "prettierd", "prettier", stop_after_first = true },
 			},
 		},
 	},
@@ -695,7 +726,7 @@ require("lazy").setup({
 					-- Manually trigger a completion from nvim-cmp.
 					--  Generally you don't need this, because nvim-cmp will display
 					--  completions whenever it has completion options available.
-					["<C-y>"] = cmp.mapping.complete({}),
+					["<C-k>"] = cmp.mapping.complete({}),
 
 					-- Think of <c-l> as moving to the right of your snippet expansion.
 					--  So if you have a snippet that's like:
@@ -739,7 +770,15 @@ require("lazy").setup({
 		name = "catppuccin",
 		priority = 1000,
 		config = function()
-			vim.cmd.colorscheme("catppuccin-latte")
+			require("catppuccin").setup({
+				flavour = "mocha",
+				transparent_background = true,
+				background = {
+					light = "latte",
+					dark = "mocha",
+				},
+			})
+			vim.cmd.colorscheme("catppuccin")
 		end,
 	},
 
@@ -782,6 +821,10 @@ require("lazy").setup({
 			-- - sd'   - [S]urround [D]elete [']quotes
 			-- - sr)'  - [S]urround [R]eplace [)] [']
 			require("mini.surround").setup()
+			require("mini.files").setup()
+			vim.keymap.set("n", "<leader>fo", function()
+				require("mini.files").open(vim.fn.expand("%:p:h"))
+			end, { desc = "Open current file's directory" })
 
 			-- Simple and easy statusline.
 			--  You could remove this setup call if you don't like it,
@@ -800,6 +843,34 @@ require("lazy").setup({
 
 			-- ... and there is more!
 			--  Check out: https://github.com/echasnovski/mini.nvim
+		end,
+	},
+
+	{
+		"f-person/git-blame.nvim",
+		-- load the plugin at startup
+		event = "VeryLazy",
+		-- Because of the keys part, you will be lazy loading this plugin.
+		-- The plugin will only load once one of the keys is used.
+		-- If you want to load the plugin at startup, add something like event = "VeryLazy",
+		-- or lazy = false. One of both options will work.
+		opts = {
+			-- your configuration comes here
+			-- for example
+			enabled = true, -- if you want to enable the plugin
+			message_template = "     <summary> • <date> • <author> • <<sha>>", -- template for the blame message, check the Message template section for more options
+			date_format = "%m-%d-%Y %H:%M", -- template for the date, check Date format section for more options
+			virtual_text_column = 1, -- virtual text start column, check Start virtual text at column section for more options
+		},
+	},
+	{
+		"github/copilot.vim",
+
+		config = function()
+			-- Add a keybind to accept the Copilot suggestion with ctrl + y
+			vim.keymap.set("i", "<C-y>", function()
+				vim.fn.feedkeys(vim.fn["copilot#Accept"](), "n")
+			end, { silent = true, desc = "Accept Copilot suggestion" })
 		end,
 	},
 	{ -- Highlight, edit, and navigate code

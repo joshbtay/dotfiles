@@ -25,10 +25,12 @@
     "defaultMode": "acceptEdits",
     "additionalDirectories": [
       "/tmp/",
-      "/Users/josh/"
+      "/users/josh/",
+      "/users/josh/remi/"
     ]
   },
   "feedbackSurveyState": {
-    "lastShownTime": 1753977073448
-  }
+    "lastShownTime": 1754070569520
+  },
+  "$schema": "https://json.schemastore.org/claude-code-settings.json"
 }

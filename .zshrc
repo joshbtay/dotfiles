@@ -5,7 +5,6 @@ if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]
   source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
 fi
 
-PATH="/Users/josh/scripts/:$PATH"
 
 #### HISTORY
 
@@ -57,12 +56,10 @@ alias ca="git add . && git commit "
 alias ssh="TERM=xterm-256color ssh"
 alias pd="pushd"
 alias od="popd"
+alias ls="ls --color"
 
 export EDITOR=nvim
 
-export AUTO_NOTIFY_THRESHOLD=20
-export AUTO_NOTIFY_TITLE="%command finished"
-export AUTO_NOTIFY_BODY="%elapsed seconds with exit code %exit_code"
 
 
 #### Plugins
@@ -76,10 +73,18 @@ zplug "jeffreytse/zsh-vi-mode"
 zplug "MichaelAquilina/zsh-you-should-use"
 zplug "fdellwing/zsh-bat"
 zplug "MichaelAquilina/zsh-auto-notify"
+cc() python3 -c "from math import *; print($*);"
+alias cc='noglob cc'
 
 #### ctrl + space to accept autosuggestions
 bindkey -M viins '^ ' autosuggest-accept
 bindkey -M vicmd '^ ' autosuggest-accept
+
+#auto notify settings
+export AUTO_NOTIFY_THRESHOLD=20
+export AUTO_NOTIFY_TITLE="%command finished"
+export AUTO_NOTIFY_BODY="%elapsed seconds with exit code %exit_code"
+export AUTO_NOTIFY_CANCEL_ON_SIGINT=1
 
 #### Plugin load
 
@@ -95,3 +100,4 @@ zplug load
 
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
+PATH="$PATH:/home/josh/scripts"

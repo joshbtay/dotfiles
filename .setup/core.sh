@@ -1,6 +1,6 @@
 # install basic packages
 yay --save --answerclean All --answerdiff None
-yay -Sy hyprland-meta-git kitty nvim discord blender brightnessctl gimp inkscape ripgrep python-pip pavucontrol openjdk-src zoom walker-bin iwd font-manager feh grim slurp vlc wl-clipboard visual-studio-code-bin fd nodejs krita pulseaudio-ctl firefox zsh github-cli stow swaync
+yay -Sy hyprland-meta-git kitty nvim discord blender brightnessctl gimp inkscape ripgrep python-pip pavucontrol openjdk-src zoom walker-bin iwd font-manager feh grim slurp vlc wl-clipboard visual-studio-code-bin fd nodejs npm krita pulseaudio-ctl firefox zsh github-cli stow swaync yazi waybar
 
 curl -sL --proto-redir -all,https https://raw.githubusercontent.com/zplug/installer/master/installer.zsh | zsh
 

@@ -10,7 +10,7 @@ if git status &>/dev/null; then
     template="$(git rev-parse --show-toplevel)/.github/pull_request_template.md"
     filled_template="/tmp/temp_pr_body"
     [ -f $template ] && cp $template $filled_template
-    vim $filled_template
+    nvim $filled_template
     pr_output=$(gh pr create --body-file $filled_template --fill)
     # Extract the URL from the output and copy it to the clipboard
     pr_url=$(echo "$pr_output" | grep -o 'https://github\.com[^ ]*')
