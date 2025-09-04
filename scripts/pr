@@ -17,8 +17,10 @@ if git status &>/dev/null; then
     echo "PR created: $pr_url"
 
     # Copy the PR URL to the clipboard (macOS)
-    echo "$pr_url" | pbcopy
+    echo "$pr_url" | wl-copy
     echo "PR URL copied to clipboard!"
+    # Copy the PR url to the clipboard (Linux)
+
   fi
 else
   echo "Not a git repository"

@@ -587,6 +587,25 @@ require("lazy").setup({
 		end,
 	},
 	{
+		"mfussenegger/nvim-lint",
+		event = { "BufReadPost", "BufWritePost", "InsertLeave" },
+		config = function()
+			local lint = require("lint")
+			lint.linters_by_ft = {
+				javascript = { "eslint_d" },
+				typescript = { "eslint_d" },
+				javascriptreact = { "eslint_d" },
+				typescriptreact = { "eslint_d" },
+			}
+			vim.api.nvim_create_autocmd({ "BufWritePost", "InsertLeave" }, {
+				callback = function()
+					lint.try_lint()
+				end,
+			})
+		end,
+	},
+
+	{
 		"kristijanhusak/vim-dadbod-ui",
 		dependencies = {
 			{ "tpope/vim-dadbod", lazy = true },
@@ -712,9 +731,7 @@ require("lazy").setup({
 					["<C-b>"] = cmp.mapping.scroll_docs(-4),
 					["<C-f>"] = cmp.mapping.scroll_docs(4),
 
-					-- Accept ([y]es) the completion.
-					--  This will auto-import if your LSP supports it.
-					--  This will expand snippets if the LSP sent a snippet.
+					-- Accept completion with Ctrl+Space
 					["<C-Space>"] = cmp.mapping.confirm({ select = true }),
 
 					-- If you prefer more traditional completion keymaps,
@@ -867,8 +884,8 @@ require("lazy").setup({
 		"github/copilot.vim",
 
 		config = function()
-			-- Add a keybind to accept the Copilot suggestion with ctrl + y
-			vim.keymap.set("i", "<C-y>", function()
+			-- Add a keybind to accept the Copilot suggestion with ctrl + enter
+			vim.keymap.set("i", "<C-CR>", function()
 				vim.fn.feedkeys(vim.fn["copilot#Accept"](), "n")
 			end, { silent = true, desc = "Accept Copilot suggestion" })
 		end,
@@ -910,6 +927,153 @@ require("lazy").setup({
 		--    - Show your current context: https://github.com/nvim-treesitter/nvim-treesitter-context
 		--    - Treesitter + textobjects: https://github.com/nvim-treesitter/nvim-treesitter-textobjects
 	},
+	{ -- Add indentation guides even on blank lines
+		"lukas-reineke/indent-blankline.nvim",
+		-- Enable `lukas-reineke/indent-blankline.nvim`
+		-- See `:help ibl`
+		main = "ibl",
+		opts = {},
+	},
+
+	{ -- VS Code-like definition/references behavior
+		"dnlhc/glance.nvim",
+		config = function()
+			local glance = require("glance")
+			local actions = glance.actions
+
+			glance.setup({
+				height = 18,
+				zindex = 45,
+				border = {
+					enable = true,
+					top_char = "―",
+					bottom_char = "―",
+				},
+				list = {
+					position = "right",
+					width = 0.33,
+				},
+				theme = {
+					enable = true,
+					mode = "auto",
+				},
+				mappings = {
+					list = {
+						["j"] = actions.next,
+						["k"] = actions.previous,
+						["<Down>"] = actions.next,
+						["<Up>"] = actions.previous,
+						["<Tab>"] = actions.next_location,
+						["<S-Tab>"] = actions.previous_location,
+						["<C-u>"] = actions.preview_scroll_win(5),
+						["<C-d>"] = actions.preview_scroll_win(-5),
+						["v"] = actions.jump_vsplit,
+						["s"] = actions.jump_split,
+						["t"] = actions.jump_tab,
+						["<CR>"] = actions.jump,
+						["o"] = actions.jump,
+						["<leader>l"] = actions.enter_win("preview"),
+						["q"] = actions.close,
+						["Q"] = actions.close,
+						["<Esc>"] = actions.close,
+					},
+					preview = {
+						["Q"] = actions.close,
+						["<Tab>"] = actions.next_location,
+						["<S-Tab>"] = actions.previous_location,
+						["<leader>l"] = actions.enter_win("list"),
+					},
+				},
+			})
+
+			-- Smart Ctrl+] behavior: try definition first, then references
+			vim.keymap.set("n", "<C-]>", function()
+				-- Check if LSP is available
+				local clients = vim.lsp.get_clients({ bufnr = 0 })
+				if #clients == 0 then
+					print("No LSP clients available")
+					return
+				end
+
+				-- Store original position to check if we moved
+				local original_pos = vim.api.nvim_win_get_cursor(0)
+				local original_buf = vim.api.nvim_get_current_buf()
+
+				-- First try the built-in go-to-definition
+				vim.lsp.buf.definition()
+
+				-- After a short delay, check if we moved
+				vim.defer_fn(function()
+					local new_pos = vim.api.nvim_win_get_cursor(0)
+					local new_buf = vim.api.nvim_get_current_buf()
+
+					-- If we didn't move to a different line/file, we're likely already on the definition
+					-- (even if we moved within the same line to beginning of word)
+					if new_buf == original_buf and new_pos[1] == original_pos[1] then
+						-- We didn't move, check references and jump if only one
+						local params = vim.lsp.util.make_position_params(0, clients[1].offset_encoding)
+						-- Include the declaration in references
+						params.context = { includeDeclaration = true }
+
+						vim.lsp.buf_request(0, "textDocument/references", params, function(_, references, _, _)
+							print("References found: " .. (references and #references or 0))
+							if not references or vim.tbl_isempty(references) then
+								print("No references found")
+							elseif #references == 1 then
+								-- Only one reference, jump directly to it
+								local ref = references[1]
+								if ref and ref.uri then
+									local bufnr = vim.uri_to_bufnr(ref.uri)
+									if bufnr and vim.api.nvim_buf_is_valid(bufnr) then
+										vim.api.nvim_set_current_buf(bufnr)
+										vim.api.nvim_win_set_cursor(0, {
+											ref.range.start.line + 1,
+											ref.range.start.character,
+										})
+									end
+								end
+							elseif #references == 2 then
+								-- Two references (likely definition + one usage), filter out current location
+								local current_uri = vim.uri_from_bufnr(original_buf)
+								local current_line = original_pos[1] - 1
+								local other_ref = nil
+
+								for _, ref in ipairs(references) do
+									if ref.uri ~= current_uri or ref.range.start.line ~= current_line then
+										other_ref = ref
+										break
+									end
+								end
+
+								if other_ref then
+									-- Jump to the other reference
+									local bufnr = vim.uri_to_bufnr(other_ref.uri)
+									if bufnr and vim.api.nvim_buf_is_valid(bufnr) then
+										vim.api.nvim_set_current_buf(bufnr)
+										vim.api.nvim_win_set_cursor(0, {
+											other_ref.range.start.line + 1,
+											other_ref.range.start.character,
+										})
+									end
+								else
+									vim.cmd("Glance references")
+								end
+							else
+								-- Multiple references, show in glance
+								vim.cmd("Glance references")
+							end
+						end)
+					end
+				end, 50) -- 50ms delay to allow definition jump to complete
+			end, { desc = "Smart definition/references" })
+
+			-- Additional keymaps for explicit glance commands
+			vim.keymap.set("n", "gd", "<CMD>Glance definitions<CR>", { desc = "Glance definitions" })
+			vim.keymap.set("n", "gr", "<CMD>Glance references<CR>", { desc = "Glance references" })
+			vim.keymap.set("n", "gy", "<CMD>Glance type_definitions<CR>", { desc = "Glance type definitions" })
+			vim.keymap.set("n", "gm", "<CMD>Glance implementations<CR>", { desc = "Glance implementations" })
+		end,
+	},
 
 	-- The following comments only work if you have downloaded the kickstart repo, not just copy pasted the
 	-- init.lua. If you want these files, they are in the repository, so you can just download them and
@@ -921,11 +1085,11 @@ require("lazy").setup({
 	--  Uncomment any of the lines below to enable them (you will need to restart nvim).
 	--
 	-- require 'kickstart.plugins.debug',
-	-- require 'kickstart.plugins.indent_line',
-	-- require 'kickstart.plugins.lint',
+	-- require("kickstart.plugins.indent_line"),
+	-- require("kickstart.plugins.lint"),
 	-- require 'kickstart.plugins.autopairs',
 	-- require 'kickstart.plugins.neo-tree',
-	-- require 'kickstart.plugins.gitsigns', -- adds gitsigns recommend keymaps
+	-- require("kickstart.plugins.gitsigns"), -- adds gitsigns recommend keymaps
 
 	-- NOTE: The import below can automatically add your own plugins, configuration, etc from `lua/custom/plugins/*.lua`
 	--    This is the easiest way to modularize your config.

@@ -85,6 +85,7 @@ export AUTO_NOTIFY_THRESHOLD=20
 export AUTO_NOTIFY_TITLE="%command finished"
 export AUTO_NOTIFY_BODY="%elapsed seconds with exit code %exit_code"
 export AUTO_NOTIFY_CANCEL_ON_SIGINT=1
+export AUTO_NOTIFY_EXPIRE_TIME=10000
 
 #### Plugin load
 
@@ -100,4 +101,10 @@ zplug load
 
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
-PATH="$PATH:/home/josh/scripts"
+PATH="/home/josh/scripts:$PATH"
+source ~/.env
+alias pbcopy='wl-copy'
+alias xclip='wl-copy'
+alias z='vi ~/.zshrc'
+alias i='pnpm install'
+alias tc='pnpm type-check'
