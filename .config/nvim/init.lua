@@ -86,6 +86,12 @@ vim.keymap.set("n", "<right>", '<cmd>echo "Use l to move!!"<CR>')
 vim.keymap.set("n", "<up>", '<cmd>echo "Use k to move!!"<CR>')
 vim.keymap.set("n", "<down>", '<cmd>echo "Use j to move!!"<CR>')
 
+-- Easier window navigation
+vim.keymap.set("n", "<C-h>", "<C-w><C-h>", { desc = "Move focus to the left window" })
+vim.keymap.set("n", "<C-l>", "<C-w><C-l>", { desc = "Move focus to the right window" })
+vim.keymap.set("n", "<C-j>", "<C-w><C-j>", { desc = "Move focus to the lower window" })
+vim.keymap.set("n", "<C-k>", "<C-w><C-k>", { desc = "Move focus to the upper window" })
+
 -- Highlight when yanking (copying) text
 --  Try it with `yap` in normal mode
 --  See `:help vim.highlight.on_yank()`
@@ -230,11 +236,18 @@ require("lazy").setup({
 				-- You can put your default mappings / updates / etc. in here
 				--  All the info you're looking for is in `:help telescope.setup()`
 				--
-				-- defaults = {
-				--   mappings = {
-				--     i = { ['<c-enter>'] = 'to_fuzzy_refine' },
-				--   },
-				-- },
+				defaults = {
+					mappings = {
+						i = {
+							["<C-j>"] = require("telescope.actions").move_selection_next,
+							["<C-k>"] = require("telescope.actions").move_selection_previous,
+						},
+						n = {
+							["<C-j>"] = require("telescope.actions").move_selection_next,
+							["<C-k>"] = require("telescope.actions").move_selection_previous,
+						},
+					},
+				},
 				-- pickers = {}
 				extensions = {
 					["ui-select"] = {
@@ -534,6 +547,11 @@ require("lazy").setup({
 				--
 				-- But for many setups, the LSP (`ts_ls`) will work just fine
 				ts_ls = {},
+				eslint = {
+					settings = {
+						workingDirectories = { mode = "auto" }
+					}
+				},
 				prismals = {},
 				lua_ls = {
 					-- cmd = { ... },
@@ -567,6 +585,7 @@ require("lazy").setup({
 			local ensure_installed = vim.tbl_keys(servers or {})
 			vim.list_extend(ensure_installed, {
 				"stylua", -- Used to format Lua code
+				"eslint_d", -- ESLint daemon for faster linting
 			})
 			require("mason-tool-installer").setup({ ensure_installed = ensure_installed })
 
@@ -662,6 +681,7 @@ require("lazy").setup({
 				-- You can use 'stop_after_first' to run the first available formatter from the list
 				javascript = { "prettierd", "prettier", stop_after_first = true },
 				typescript = { "prettierd", "prettier", stop_after_first = true },
+				json = { "prettierd", "prettier", stop_after_first = true },
 			},
 		},
 	},
@@ -726,6 +746,9 @@ require("lazy").setup({
 					["<C-n>"] = cmp.mapping.select_next_item(),
 					-- Select the [p]revious item
 					["<C-p>"] = cmp.mapping.select_prev_item(),
+					-- Alternative navigation with j/k
+					["<C-j>"] = cmp.mapping.select_next_item(),
+					["<C-k>"] = cmp.mapping.select_prev_item(),
 
 					-- Scroll the documentation window [b]ack / [f]orward
 					["<C-b>"] = cmp.mapping.scroll_docs(-4),
@@ -743,22 +766,22 @@ require("lazy").setup({
 					-- Manually trigger a completion from nvim-cmp.
 					--  Generally you don't need this, because nvim-cmp will display
 					--  completions whenever it has completion options available.
-					["<C-k>"] = cmp.mapping.complete({}),
+					["<A-k>"] = cmp.mapping.complete({}),
 
-					-- Think of <c-l> as moving to the right of your snippet expansion.
+					-- Think of <A-l> as moving to the right of your snippet expansion.
 					--  So if you have a snippet that's like:
 					--  function $name($args)
 					--    $body
 					--  end
 					--
-					-- <c-l> will move you to the right of each of the expansion locations.
-					-- <c-h> is similar, except moving you backwards.
-					["<C-l>"] = cmp.mapping(function()
+					-- <A-l> will move you to the right of each of the expansion locations.
+					-- <A-h> is similar, except moving you backwards.
+					["<A-l>"] = cmp.mapping(function()
 						if luasnip.expand_or_locally_jumpable() then
 							luasnip.expand_or_jump()
 						end
 					end, { "i", "s" }),
-					["<C-h>"] = cmp.mapping(function()
+					["<A-h>"] = cmp.mapping(function()
 						if luasnip.locally_jumpable(-1) then
 							luasnip.jump(-1)
 						end
@@ -831,6 +854,10 @@ require("lazy").setup({
 			--  - yinq - [Y]ank [I]nside [N]ext [Q]uote
 			--  - ci'  - [C]hange [I]nside [']quote
 			require("mini.ai").setup({ n_lines = 500 })
+			require("mini.indentscope").setup({
+				symbol = "│",
+				delay = 100,
+			})
 
 			-- Add/delete/replace surroundings (brackets, quotes, etc.)
 			--
@@ -927,14 +954,6 @@ require("lazy").setup({
 		--    - Show your current context: https://github.com/nvim-treesitter/nvim-treesitter-context
 		--    - Treesitter + textobjects: https://github.com/nvim-treesitter/nvim-treesitter-textobjects
 	},
-	{ -- Add indentation guides even on blank lines
-		"lukas-reineke/indent-blankline.nvim",
-		-- Enable `lukas-reineke/indent-blankline.nvim`
-		-- See `:help ibl`
-		main = "ibl",
-		opts = {},
-	},
-
 	{ -- VS Code-like definition/references behavior
 		"dnlhc/glance.nvim",
 		config = function()

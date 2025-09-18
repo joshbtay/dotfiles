@@ -73,15 +73,13 @@ zplug "jeffreytse/zsh-vi-mode"
 zplug "MichaelAquilina/zsh-you-should-use"
 zplug "fdellwing/zsh-bat"
 zplug "MichaelAquilina/zsh-auto-notify"
-cc() python3 -c "from math import *; print($*);"
-alias cc='noglob cc'
 
 #### ctrl + space to accept autosuggestions
 bindkey -M viins '^ ' autosuggest-accept
 bindkey -M vicmd '^ ' autosuggest-accept
 
 #auto notify settings
-export AUTO_NOTIFY_THRESHOLD=20
+export AUTO_NOTIFY_THRESHOLD=15
 export AUTO_NOTIFY_TITLE="%command finished"
 export AUTO_NOTIFY_BODY="%elapsed seconds with exit code %exit_code"
 export AUTO_NOTIFY_CANCEL_ON_SIGINT=1
