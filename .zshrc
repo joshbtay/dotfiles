@@ -36,6 +36,9 @@ alias vi='nvim'
 alias py='pypy3'
 alias pypy='pypy3'
 alias ..="cd .."
+alias ...="cd ../.."
+alias ....="cd ../../.."
+alias .....="cd ../../../.."
 alias x="exit"
 
 # Git Aliases
@@ -57,6 +60,7 @@ alias ssh="TERM=xterm-256color ssh"
 alias pd="pushd"
 alias od="popd"
 alias ls="ls --color"
+alias mm="git fetch origin main:main && git merge origin/main"
 
 export EDITOR=nvim
 
@@ -106,3 +110,91 @@ alias xclip='wl-copy'
 alias z='vi ~/.zshrc'
 alias i='pnpm install'
 alias tc='pnpm type-check'
+alias hard='echo "Are you sure? This will delete all uncommitted changes. (y/N)" && read ans && [ "$ans" = "y" ] && git reset --hard && git clean -fd'
+
+y() {
+	local tmp="$(mktemp -t "yazi-cwd.XXXXXX")" cwd
+	yazi "$@" --cwd-file="$tmp"
+	IFS= read -r -d '' cwd < "$tmp"
+	[ -n "$cwd" ] && [ "$cwd" != "$PWD" ] && builtin cd -- "$cwd"
+	rm -f -- "$tmp"
+}
+
+y_widget() {
+    local tmp="$(mktemp -t "yazi-cwd.XXXXXX")" cwd
+    zle push-input
+    BUFFER="yazi --cwd-file=\"$tmp\"; [ -f \"$tmp\" ] && cd \"\$(cat \"$tmp\")\" 2>/dev/null; rm -f \"$tmp\""
+    zle accept-line
+}
+zle -N y_widget
+bindkey -M viins '^O' y_widget
+
+# add a git worktree, copy the gitignored files from the main repo
+w() {
+    # check if there's no first argument or if there's no .git directory
+    if [ -z "$1" ] || [ ! -d .git ]; then
+	echo "Usage: w <new-branch-name> [<start-point>] (from a git repo)" >&2
+	return 1
+    fi
+    local branch="$1"
+    local start_point="${2:-main}"
+    git worktree add -b "$branch" "../$branch" "$start_point" || return 1
+    # no stdout
+    rsync -av --progress --exclude '.git' --exclude '.gitignore' --exclude node_modules --exclude '*.log' . "../$branch" 1>/dev/null || return 1
+    cd "../$branch" || return 1
+    git update-index --skip-worktree packages/scripts/main.ts || return 1
+    pnpm install || return 1
+}
+alias wd='git worktree remove --force'
+alias oc='opencode'
+alias open='xdg-open'
+md() {
+    pandoc $1 > /tmp/$1.html
+    open /tmp/$1.html
+}
+
+# Custom cd function that shows git status when changing between repos
+cd() {
+    # Get the git root of current directory (if in a git repo)
+    local prev_git_root=""
+    if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+        prev_git_root=$(git rev-parse --show-toplevel 2>/dev/null)
+    fi
+    
+    # Actually change directory
+    builtin cd "$@"
+    local cd_exit_code=$?
+    
+    # If cd failed, return early
+    if [ $cd_exit_code -ne 0 ]; then
+        return $cd_exit_code
+    fi
+    
+    # Get the git root of new directory (if in a git repo)
+    local new_git_root=""
+    if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+        new_git_root=$(git rev-parse --show-toplevel 2>/dev/null)
+    fi
+    
+    # Show git status if:
+    # 1. Moved from non-git to git repo, OR
+    # 2. Moved from one git repo to another different git repo
+    if [ -n "$new_git_root" ]; then
+        if [ -z "$prev_git_root" ] || [ "$prev_git_root" != "$new_git_root" ]; then
+            local git_status
+            git_status=$(git status -s)
+            if [ -z "$git_status" ]; then
+                # echo in cyan color
+                echo "\033[0;36m‧₊˚🧼✩ ₊˚🫧⊹\033[0m"
+            else
+                git status -s
+            fi
+        fi
+    fi
+    
+    return 0
+}
+
+mm() {
+    git fetch origin main && git merge origin/main || vi +DiffviewOpen
+}

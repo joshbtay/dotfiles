@@ -1,0 +1,10 @@
+[mgr]
+show_hidden = true
+image_bound = [50000, 50000]
+
+[preview]
+max_width = 600
+max_height = 900
+
+[adapter]
+kitty = "kitty --kitten icat --clear --transfer-mode=memory --stdin=no --place=${width}x${height}@${x}x${y} ${file}"

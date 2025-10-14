@@ -91,6 +91,15 @@ vim.keymap.set("n", "<C-h>", "<C-w><C-h>", { desc = "Move focus to the left wind
 vim.keymap.set("n", "<C-l>", "<C-w><C-l>", { desc = "Move focus to the right window" })
 vim.keymap.set("n", "<C-j>", "<C-w><C-j>", { desc = "Move focus to the lower window" })
 vim.keymap.set("n", "<C-k>", "<C-w><C-k>", { desc = "Move focus to the upper window" })
+vim.keymap.set("i", "<C-h>", "<C-\\><C-N><C-w><C-h>", { desc = "Move focus to the left window" })
+vim.keymap.set("i", "<C-l>", "<C-\\><C-N><C-w><C-l>", { desc = "Move focus to the right window" })
+vim.keymap.set("i", "<C-j>", "<C-\\><C-N><C-w><C-j>", { desc = "Move focus to the lower window" })
+vim.keymap.set("i", "<C-k>", "<C-\\><C-N><C-w><C-k>", { desc = "Move focus to the upper window" })
+
+-- close current window
+vim.keymap.set("n", "<C-x>", "<cmd>close<CR>", { desc = "Close the current window" })
+vim.keymap.set("i", "<C-x>", "<C-\\><C-N><cmd>close<CR>", { desc = "Close the current window" })
+-- open new window
 
 -- Highlight when yanking (copying) text
 --  Try it with `yap` in normal mode
@@ -184,6 +193,63 @@ require("lazy").setup({
 				{ "<leader>h", group = "Git [H]unk", mode = { "n", "v" } },
 			},
 		},
+	},
+	{
+		"MagicDuck/grug-far.nvim",
+		-- Note (lazy loading): grug-far.lua defers all it's requires so it's lazy by default
+		-- additional lazy config to defer loading is not really needed...
+		config = function()
+			-- optional setup call to override plugin options
+			-- alternatively you can set options with vim.g.grug_far = { ... }
+			require("grug-far").setup({
+				-- options, see Configuration section below
+				-- there are no required options atm
+			})
+
+			-- Global Ctrl-f toggle for grug-far in all modes
+			local function toggle_grug_far()
+				local grug_far = require("grug-far")
+
+				-- First, check if there's a visible grug-far window
+				for _, win in ipairs(vim.api.nvim_list_wins()) do
+					local buf = vim.api.nvim_win_get_buf(win)
+					local ok, filetype = pcall(vim.api.nvim_buf_get_option, buf, "filetype")
+					if ok and filetype == "grug-far" then
+						-- Close the visible window
+						vim.api.nvim_win_close(win, false)
+						return
+					end
+				end
+
+				-- No visible window, check if a grug-far buffer exists
+				local grug_buf = nil
+				for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+					if vim.api.nvim_buf_is_valid(buf) and vim.api.nvim_buf_is_loaded(buf) then
+						local ok, filetype = pcall(vim.api.nvim_buf_get_option, buf, "filetype")
+						if ok and filetype == "grug-far" then
+							grug_buf = buf
+							break
+						end
+					end
+				end
+
+				-- If we found an existing buffer, open it in a split; otherwise create a new one
+				if grug_buf then
+					-- Open the existing buffer in a vertical split on the right
+					vim.cmd("botright vsplit")
+					vim.api.nvim_win_set_buf(0, grug_buf)
+				else
+					grug_far.open()
+				end
+			end
+
+			vim.keymap.set("n", "<C-f>", toggle_grug_far, { desc = "Toggle grug-far" })
+			vim.keymap.set("i", "<C-f>", function()
+				vim.cmd("stopinsert")
+				toggle_grug_far()
+			end, { desc = "Toggle grug-far" })
+			vim.keymap.set("v", "<C-f>", toggle_grug_far, { desc = "Toggle grug-far" })
+		end,
 	},
 
 	{ -- Fuzzy Finder (files, lsp, etc)
@@ -299,7 +365,6 @@ require("lazy").setup({
 			end, { desc = "[S]earch [N]eovim files" })
 		end,
 	},
-	-- In your plugins/init.lua or a dedicated diffview.lua file within lua/plugins/
 	{
 		{
 			"sindrets/diffview.nvim",
@@ -307,7 +372,38 @@ require("lazy").setup({
 				-- nvim-web-devicons is a common dependency for icon support
 				{ "nvim-tree/nvim-web-devicons", lazy = true },
 			},
-			vim.keymap.set("n", "<leader>gd", "<cmd>DiffviewOpen<CR>", { desc = "[D]iff" }),
+			config = function()
+				require("diffview").setup()
+
+				-- Toggle function for diffview
+				local function toggle_diffview()
+					local lib = require("diffview.lib")
+					local view = lib.get_current_view()
+					if view then
+						-- If diffview is open, close it
+						vim.cmd("DiffviewClose")
+					else
+						-- If diffview is closed, open it
+						local current_file = vim.fn.expand("%")
+
+						-- Check if we're in a file with git changes
+						if current_file ~= "" then
+							local git_status =
+								vim.fn.system("git diff --name-only " .. vim.fn.shellescape(current_file))
+							if vim.v.shell_error == 0 and git_status ~= "" then
+								-- File has changes, open diffview for this specific file
+								vim.cmd("DiffviewOpen -- " .. vim.fn.fnameescape(current_file))
+								return
+							end
+						end
+
+						-- Default: just open diffview normally
+						vim.cmd("DiffviewOpen")
+					end
+				end
+
+				vim.keymap.set("n", "<C-g>", toggle_diffview, { desc = "Toggle Diffview" })
+			end,
 		},
 	},
 
@@ -549,8 +645,8 @@ require("lazy").setup({
 				ts_ls = {},
 				eslint = {
 					settings = {
-						workingDirectories = { mode = "auto" }
-					}
+						workingDirectories = { mode = "auto" },
+					},
 				},
 				prismals = {},
 				lua_ls = {
@@ -888,6 +984,15 @@ require("lazy").setup({
 			-- ... and there is more!
 			--  Check out: https://github.com/echasnovski/mini.nvim
 		end,
+	},
+
+	-- Session persistence
+	{
+		"olimorris/persisted.nvim",
+		event = "BufReadPre", -- Ensure the plugin loads only when a buffer has been loaded
+		opts = {
+			-- Your config goes here ...
+		},
 	},
 
 	{

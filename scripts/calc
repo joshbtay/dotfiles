@@ -1,0 +1,10 @@
+#!/bin/python3 -i
+import sys
+sys.ps1 = "❯ "
+import signal
+from math import *
+
+def end(signum, frame):
+  exit(0)
+
+signal.signal(signal.SIGINT, end)

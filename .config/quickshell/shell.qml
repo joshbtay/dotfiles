@@ -5,6 +5,7 @@ import QtQuick
 import QtQuick.Layouts
 import QtQuick.Effects
 import QtQuick.Controls
+import "./clock"
 
 ShellRoot {
     property int currentWorkspace: 3
@@ -483,16 +484,15 @@ ShellRoot {
                     // Clock
                     Rectangle {
                         Layout.preferredHeight: 26
-                        Layout.preferredWidth: 90
+                        Layout.preferredWidth: 60
                         color: "#404040"
                         radius: 13
 
-                        ClockWidget {
+                        Text {
                             anchors.centerIn: parent
-                            timeFormat: "hh:mm AP"
-                            dateFormat: "ddd, MMM d"
+                            text: Time.time
                             font.family: "SF Pro Display, Roboto, sans-serif"
-                            font.pixelSize: 11
+                            font.pixelSize: 13
                             font.weight: Font.Medium
                             color: "#e0e0e0"
                         }
