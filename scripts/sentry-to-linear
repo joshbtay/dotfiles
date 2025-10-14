@@ -1,0 +1,113 @@
+#!/usr/bin/env bash
+
+# Script to fetch a Sentry issue and create a corresponding Linear issue
+# Usage: sentry-to-linear <sentry-issue-id>
+
+set -euo pipefail
+
+# Load environment variables from ~/.env
+if [ -f "$HOME/.env" ]; then
+    export $(grep -v '^#' "$HOME/.env" | xargs)
+fi
+
+# Configuration
+SENTRY_ORG="remi-2g"
+LINEAR_TEAM_ID="f7af2846-4059-489b-8fa4-a5ae5e0caea9"
+LINEAR_BACKLOG_STATE_ID="dea387d8-b4d0-48f2-a58a-b70b6a4281dd"
+LINEAR_USER_ID="70b781ce-2b23-4079-9e7e-975104084a1b"
+LINEAR_PROJECT_ID="2a5d09ab-8a39-4086-89f4-3fb92164cc8d"
+
+# Check if Sentry issue ID is provided
+if [ $# -eq 0 ]; then
+    echo "Usage: $0 <sentry-issue-id>"
+    echo "Example: $0 JAVASCRIPT-123"
+    exit 1
+fi
+
+SENTRY_ISSUE_ID="$1"
+
+# Check for required API keys
+if [ -z "${SENTRY_AUTH_TOKEN:-}" ]; then
+    echo "Error: SENTRY_AUTH_TOKEN not found in environment"
+    exit 1
+fi
+
+if [ -z "${LINEAR_API_KEY:-}" ]; then
+    echo "Error: LINEAR_API_KEY not found in environment"
+    exit 1
+fi
+
+echo "Fetching Sentry issue: $SENTRY_ISSUE_ID..."
+
+# Fetch Sentry issue details
+# Note: Auth token requires 'event:read' scope
+SENTRY_RESPONSE=$(curl -s \
+    -H "Authorization: Bearer $SENTRY_AUTH_TOKEN" \
+    "https://sentry.io/api/0/organizations/$SENTRY_ORG/issues/$SENTRY_ISSUE_ID/")
+
+# Extract relevant fields from Sentry issue
+ISSUE_TITLE=$(echo "$SENTRY_RESPONSE" | jq -r '.title // .metadata.title // "Untitled Issue"')
+ISSUE_TYPE=$(echo "$SENTRY_RESPONSE" | jq -r '.type // "error"')
+ISSUE_LEVEL=$(echo "$SENTRY_RESPONSE" | jq -r '.level // "error"')
+ISSUE_URL=$(echo "$SENTRY_RESPONSE" | jq -r '.permalink // ""')
+CULPRIT=$(echo "$SENTRY_RESPONSE" | jq -r '.culprit // ""')
+FIRST_SEEN=$(echo "$SENTRY_RESPONSE" | jq -r '.firstSeen // ""')
+LAST_SEEN=$(echo "$SENTRY_RESPONSE" | jq -r '.lastSeen // ""')
+COUNT=$(echo "$SENTRY_RESPONSE" | jq -r '.count // "0"')
+USER_COUNT=$(echo "$SENTRY_RESPONSE" | jq -r '.userCount // "0"')
+
+# Create Linear issue description
+LINEAR_DESCRIPTION=$(cat <<EOF
+**Sentry Issue:** $SENTRY_ISSUE_ID
+
+**Type:** $ISSUE_TYPE
+**Level:** $ISSUE_LEVEL
+**Occurrences:** $COUNT
+**Affected Users:** $USER_COUNT
+**First Seen:** $FIRST_SEEN
+**Last Seen:** $LAST_SEEN
+
+${CULPRIT:+**Culprit:** $CULPRIT}
+
+[View in Sentry]($ISSUE_URL)
+EOF
+)
+
+
+# Create Linear issue using GraphQL API
+LINEAR_MUTATION=$(cat <<EOF
+{
+  "query": "mutation CreateIssue(\$title: String!, \$description: String!, \$teamId: String!, \$stateId: String!, \$assigneeId: String!, \$projectId: String!) { issueCreate(input: { title: \$title, description: \$description, teamId: \$teamId, stateId: \$stateId, assigneeId: \$assigneeId, projectId: \$projectId }) { success issue { id identifier title url } } }",
+  "variables": {
+    "title": "$ISSUE_TITLE",
+    "description": $(echo "$LINEAR_DESCRIPTION" | jq -Rs .),
+    "teamId": "$LINEAR_TEAM_ID",
+    "stateId": "$LINEAR_BACKLOG_STATE_ID",
+    "assigneeId": "$LINEAR_USER_ID",
+    "projectId": "$LINEAR_PROJECT_ID"
+  }
+}
+EOF
+)
+
+LINEAR_RESPONSE=$(curl -s \
+    -X POST \
+    -H "Authorization: $LINEAR_API_KEY" \
+    -H "Content-Type: application/json" \
+    -d "$LINEAR_MUTATION" \
+    https://api.linear.app/graphql)
+
+# Check if Linear issue was created successfully
+SUCCESS=$(echo "$LINEAR_RESPONSE" | jq -r '.data.issueCreate.success')
+
+if [ "$SUCCESS" = "true" ]; then
+    LINEAR_ID=$(echo "$LINEAR_RESPONSE" | jq -r '.data.issueCreate.issue.identifier')
+    LINEAR_URL=$(echo "$LINEAR_RESPONSE" | jq -r '.data.issueCreate.issue.url')
+
+    echo "✓ Successfully created Linear issue: $LINEAR_ID"
+    echo "  URL: $LINEAR_URL"
+else
+    echo "✗ Failed to create Linear issue"
+    echo "$LINEAR_RESPONSE" | jq .
+    exit 1
+fi

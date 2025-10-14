@@ -195,6 +195,6 @@ cd() {
     return 0
 }
 
-mm() {
-    git fetch origin main && git merge origin/main || vi +DiffviewOpen
-}
+alias mm='git fetch origin main && git merge origin/main || vi +DiffviewOpen'
+
+alias sl="sentry-to-linear"
