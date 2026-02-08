@@ -2,9 +2,22 @@
 
 STATE=$(cat /proc/acpi/button/lid/LID0/state | awk '{print $2}')
 MONITORS=$(hyprctl monitors | grep 'Monitor' | wc -l)
+BUILT_IN_MONITOR_ON=$(hyprctl monitors | grep eDP-1 | wc -l)
+
+echo $BUILT_IN_MONITOR_ON
 
 if [[ $STATE == "open" ]]; then
-    hyprctl keyword monitor "eDP-1,2880x1920,0x0,1"
+    if [[ $BUILT_IN_MONITOR_ON -eq 0 ]]; then
+        # Find the height of the monitor at 0x0
+        HEIGHT=$(hyprctl monitors all | grep -A 1 "at 0x0" | grep -oP '\d+x\K\d+' | head -1)
+
+        # Position the built-in monitor below it, or at 0x0 if no monitor found there
+        if [[ -n $HEIGHT ]]; then
+            hyprctl keyword monitor "eDP-1,2880x1920,0x${HEIGHT},1"
+        else
+            hyprctl keyword monitor "eDP-1,2880x1920,0x0,1"
+        fi
+    fi
 else
     if [[ $MONITORS -gt 1 ]]; then
         hyprctl keyword monitor "eDP-1,disable"

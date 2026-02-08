@@ -4,8 +4,8 @@
     "allow": [
       "Bash(pnpm:*)",
       "Bash(rg:*)",
-      "Read(find:*)",
-      "Read(grep:*)",
+      "Read(*)",
+      "Read(*)",
       "Bash(echo:*)",
       "Bash(pbcopy:*)",
       "Bash(git checkout:*)",
@@ -23,11 +23,7 @@
     ],
     "deny": [],
     "defaultMode": "acceptEdits",
-    "additionalDirectories": [
-      "/tmp/",
-      "/home/josh/",
-      "/home/josh/remi/"
-    ]
+    "additionalDirectories": ["/tmp/", "/home/josh/", "/home/josh/remi/"]
   },
   "feedbackSurveyState": {
     "lastShownTime": 1754070569520

@@ -53,7 +53,8 @@ alias log="git log --color --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d
 alias cfg="git --git-dir=$HOME/dotfiles/ --work-tree=$HOME"
 alias push="git push"
 alias stash="git stash"
-alias g="lazygit"
+alias lg="lazygit"
+alias ld="lazydocker"
 alias co="git checkout"
 alias ca="git add . && git commit "
 alias ssh="TERM=xterm-256color ssh"
@@ -63,7 +64,6 @@ alias ls="ls --color"
 alias mm="git fetch origin main:main && git merge origin/main"
 
 export EDITOR=nvim
-
 
 
 #### Plugins
@@ -107,9 +107,7 @@ PATH="/home/josh/scripts:$PATH"
 source ~/.env
 alias pbcopy='wl-copy'
 alias xclip='wl-copy'
-alias z='vi ~/.zshrc'
-alias i='pnpm install'
-alias tc='pnpm type-check'
+alias zi='vi ~/.zshrc'
 alias hard='echo "Are you sure? This will delete all uncommitted changes. (y/N)" && read ans && [ "$ans" = "y" ] && git reset --hard && git clean -fd'
 
 y() {
@@ -144,6 +142,7 @@ w() {
     cd "../$branch" || return 1
     git update-index --skip-worktree packages/scripts/main.ts || return 1
     pnpm install || return 1
+    co pnpm-lock.yaml || return 1
 }
 alias wd='git worktree remove --force'
 alias oc='opencode'
@@ -185,7 +184,7 @@ cd() {
             git_status=$(git status -s)
             if [ -z "$git_status" ]; then
                 # echo in cyan color
-                echo "\033[0;36m‧₊˚🧼✩ ₊˚🫧⊹\033[0m"
+                echo "‧₊˚🧼✩ ₊˚🫧⊹"
             else
                 git status -s
             fi
@@ -197,4 +196,16 @@ cd() {
 
 alias mm='git fetch origin main && git merge origin/main || vi +DiffviewOpen'
 
-alias sl="sentry-to-linear"
+# check if in git repo, if so, open nvim
+gd() {
+    if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+        DIFF="$(git diff HEAD)"
+        if [ -z "$DIFF" ]; then
+            echo "‧₊˚🧼✩ ₊˚🫧⊹"
+            return 0
+        fi
+        vi +DiffviewOpen
+    else
+        echo "Not a git repository"
+    fi
+}

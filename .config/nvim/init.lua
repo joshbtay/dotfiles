@@ -367,7 +367,8 @@ require("lazy").setup({
 	},
 	{
 		{
-			"sindrets/diffview.nvim",
+			"diffview.nvim",
+			dir = "~/code/diffview.nvim/",
 			dependencies = {
 				-- nvim-web-devicons is a common dependency for icon support
 				{ "nvim-tree/nvim-web-devicons", lazy = true },
@@ -377,27 +378,45 @@ require("lazy").setup({
 
 				-- Toggle function for diffview
 				local function toggle_diffview()
+					local diffview = require("diffview")
 					local lib = require("diffview.lib")
 					local view = lib.get_current_view()
 					if view then
-						-- If diffview is open, close it
-						vim.cmd("DiffviewClose")
-					else
-						-- If diffview is closed, open it
+						-- If diffview is open, close it, but get the current_file and line first. Then, we find the buffer and set the cursor back to where it was.
 						local current_file = vim.fn.expand("%")
-
-						-- Check if we're in a file with git changes
+						local current_line = vim.fn.line(".")
+						diffview.close()
+						local bufnr = vim.fn.bufnr(current_file)
+						if bufnr ~= -1 then
+							local win_ids = vim.fn.win_findbuf(bufnr)
+							if #win_ids > 0 then
+								vim.api.nvim_set_current_win(win_ids[1])
+								vim.api.nvim_win_set_cursor(win_ids[1], { current_line, 0 })
+							end
+						end
+					else
+						local current_file = vim.fn.expand("%")
 						if current_file ~= "" then
+							local current_line = vim.fn.line(".")
 							local git_status =
 								vim.fn.system("git diff --name-only " .. vim.fn.shellescape(current_file))
 							if vim.v.shell_error == 0 and git_status ~= "" then
-								-- File has changes, open diffview for this specific file
 								vim.cmd("DiffviewOpen -- " .. vim.fn.fnameescape(current_file))
+								local right_win = vim.fn.winnr("2l")
+								local win_id = vim.fn.win_getid(right_win)
+								vim.fn.win_gotoid(win_id)
+
+								vim.defer_fn(function()
+									vim.cmd("normal! zR")
+									vim.api.nvim_win_set_cursor(win_id, { current_line, 0 })
+								end, 200)
+
+								vim.cmd("DiffviewToggleFiles")
+
 								return
 							end
 						end
 
-						-- Default: just open diffview normally
 						vim.cmd("DiffviewOpen")
 					end
 				end
@@ -642,13 +661,9 @@ require("lazy").setup({
 				--    https://github.com/pmizio/typescript-tools.nvim
 				--
 				-- But for many setups, the LSP (`ts_ls`) will work just fine
-				ts_ls = {},
-				eslint = {
-					settings = {
-						workingDirectories = { mode = "auto" },
-					},
-				},
 				prismals = {},
+				biome = {},
+				tsgo = {},
 				lua_ls = {
 					-- cmd = { ... },
 					-- filetypes = { ... },
@@ -678,12 +693,12 @@ require("lazy").setup({
 			--
 			-- You can add other tools here that you want Mason to install
 			-- for you, so that they are available from within Neovim.
-			local ensure_installed = vim.tbl_keys(servers or {})
-			vim.list_extend(ensure_installed, {
-				"stylua", -- Used to format Lua code
-				"eslint_d", -- ESLint daemon for faster linting
-			})
-			require("mason-tool-installer").setup({ ensure_installed = ensure_installed })
+			-- local ensure_installed = vim.tbl_keys(servers or {})
+			-- vim.list_extend(ensure_installed, {
+			-- 	"stylua", -- Used to format Lua code
+			-- 	"biome",
+			-- })
+			-- require("mason-tool-installer").setup({ ensure_installed = ensure_installed })
 
 			require("mason-lspconfig").setup({
 				ensure_installed = {}, -- explicitly set to an empty table (Kickstart populates installs via mason-tool-installer)
@@ -701,24 +716,6 @@ require("lazy").setup({
 			})
 		end,
 	},
-	{
-		"mfussenegger/nvim-lint",
-		event = { "BufReadPost", "BufWritePost", "InsertLeave" },
-		config = function()
-			local lint = require("lint")
-			lint.linters_by_ft = {
-				javascript = { "eslint_d" },
-				typescript = { "eslint_d" },
-				javascriptreact = { "eslint_d" },
-				typescriptreact = { "eslint_d" },
-			}
-			vim.api.nvim_create_autocmd({ "BufWritePost", "InsertLeave" }, {
-				callback = function()
-					lint.try_lint()
-				end,
-			})
-		end,
-	},
 
 	{
 		"kristijanhusak/vim-dadbod-ui",
@@ -732,7 +729,7 @@ require("lazy").setup({
 			"DBUIAddConnection",
 			"DBUIFindBuffer",
 		},
-		init = function()
+		config = function()
 			-- Your DBUI configuration
 			vim.g.db_ui_use_nerd_fonts = 1
 			-- keymap to open DBUI
@@ -756,6 +753,8 @@ require("lazy").setup({
 		opts = {
 			notify_on_error = false,
 			format_on_save = function(bufnr)
+				-- just disabling format on save for now
+				-- return nil
 				-- Disable "format_on_save lsp_fallback" for languages that don't
 				-- have a well standardized coding style. You can add additional
 				-- languages here or re-enable it for the disabled ones.
@@ -773,11 +772,9 @@ require("lazy").setup({
 				lua = { "stylua" },
 				-- Conform can also run multiple formatters sequentially
 				-- python = { "isort", "black" },
-				--
-				-- You can use 'stop_after_first' to run the first available formatter from the list
-				javascript = { "prettierd", "prettier", stop_after_first = true },
-				typescript = { "prettierd", "prettier", stop_after_first = true },
-				json = { "prettierd", "prettier", stop_after_first = true },
+				javascript = { "biome-check" },
+				typescript = { "biome-check" },
+				json = { "biome" },
 			},
 		},
 	},
@@ -900,24 +897,19 @@ require("lazy").setup({
 			})
 		end,
 	},
-
+	-- Using Lazy
 	{
-		"catppuccin/nvim",
-		name = "catppuccin",
-		priority = 1000,
+		"navarasu/onedark.nvim",
+		priority = 1000, -- make sure to load this before all the other start plugins
 		config = function()
-			require("catppuccin").setup({
-				flavour = "mocha",
-				transparent_background = true,
-				background = {
-					light = "latte",
-					dark = "mocha",
-				},
+			require("onedark").setup({
+				style = "darker",
+				transparent = true,
 			})
-			vim.cmd.colorscheme("catppuccin")
+			-- Enable theme
+			require("onedark").load()
 		end,
 	},
-
 	-- Highlight todo, notes, etc in comments
 	{
 		"folke/todo-comments.nvim",
@@ -965,22 +957,6 @@ require("lazy").setup({
 			vim.keymap.set("n", "<leader>fo", function()
 				require("mini.files").open(vim.fn.expand("%:p:h"))
 			end, { desc = "Open current file's directory" })
-
-			-- Simple and easy statusline.
-			--  You could remove this setup call if you don't like it,
-			--  and try some other statusline plugin
-			local statusline = require("mini.statusline")
-			-- set use_icons to true if you have a Nerd Font
-			statusline.setup({ use_icons = vim.g.have_nerd_font })
-
-			-- You can configure sections in the statusline by overriding their
-			-- default behavior. For example, here we set the section for
-			-- cursor location to LINE:COLUMN
-			---@diagnostic disable-next-line: duplicate-set-field
-			statusline.section_location = function()
-				return "%2l:%-2v"
-			end
-
 			-- ... and there is more!
 			--  Check out: https://github.com/echasnovski/mini.nvim
 		end,
@@ -1058,6 +1034,52 @@ require("lazy").setup({
 		--    - Incremental selection: Included, see `:help nvim-treesitter-incremental-selection-mod`
 		--    - Show your current context: https://github.com/nvim-treesitter/nvim-treesitter-context
 		--    - Treesitter + textobjects: https://github.com/nvim-treesitter/nvim-treesitter-textobjects
+	},
+	{
+		"hat0uma/csvview.nvim",
+		---@module "csvview"
+		---@type CsvView.Options
+		opts = {
+			parser = { comments = { "#", "//" } },
+			keymaps = {
+				-- Text objects for selecting fields
+				textobject_field_inner = { "if", mode = { "o", "x" } },
+				textobject_field_outer = { "af", mode = { "o", "x" } },
+				-- Excel-like navigation:
+				-- Use <Tab> and <S-Tab> to move horizontally between fields.
+				-- Use <Enter> and <S-Enter> to move vertically between rows and place the cursor at the end of the field.
+				-- Note: In terminals, you may need to enable CSI-u mode to use <S-Tab> and <S-Enter>.
+				jump_next_field_end = { "<Tab>", mode = { "n", "v" } },
+				jump_prev_field_end = { "<S-Tab>", mode = { "n", "v" } },
+				jump_next_row = { "<Enter>", mode = { "n", "v" } },
+				jump_prev_row = { "<S-Enter>", mode = { "n", "v" } },
+			},
+		},
+		cmd = { "CsvViewEnable", "CsvViewDisable", "CsvViewToggle" },
+	},
+	{
+		"nvim-lualine/lualine.nvim",
+		dependencies = { "nvim-tree/nvim-web-devicons" },
+		config = function()
+			require("lualine").setup({
+				options = {
+					theme = "auto",
+					globalstatus = true,
+				},
+				sections = {
+					lualine_a = {
+						function()
+							return vim.fn.mode()
+						end,
+					},
+					lualine_b = {},
+					lualine_c = { { "filename", path = 2 } }, -- path = 1 shows relative path
+					lualine_x = {},
+					lualine_y = {},
+					lualine_z = { "location" },
+				},
+			})
+		end,
 	},
 	{ -- VS Code-like definition/references behavior
 		"dnlhc/glance.nvim",
@@ -1247,5 +1269,7 @@ require("lazy").setup({
 	},
 })
 
+vim.lsp.enable("tsgo")
+vim.lsp.enable("pyright")
 -- The line beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et
