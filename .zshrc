@@ -56,7 +56,7 @@ alias stash="git stash"
 alias lg="lazygit"
 alias ld="lazydocker"
 alias co="git checkout"
-alias ca="git add . && git commit "
+alias ca="add . && commit "
 alias ssh="TERM=xterm-256color ssh"
 alias pd="pushd"
 alias od="popd"
@@ -69,7 +69,8 @@ export EDITOR=nvim
 #### Plugins
 
 source ~/.zplug/init.zsh
-
+export NVM_LAZY_LOAD=true
+export NVM_COMPLETION=true
 zplug romkatv/powerlevel10k, as:theme, depth:1
 zplug "zsh-users/zsh-syntax-highlighting", defer:2
 zplug "zsh-users/zsh-autosuggestions"
@@ -77,6 +78,7 @@ zplug "jeffreytse/zsh-vi-mode"
 zplug "MichaelAquilina/zsh-you-should-use"
 zplug "fdellwing/zsh-bat"
 zplug "MichaelAquilina/zsh-auto-notify"
+zplug "lukechilds/zsh-nvm"
 
 #### ctrl + space to accept autosuggestions
 bindkey -M viins '^ ' autosuggest-accept
@@ -146,7 +148,6 @@ w() {
 }
 alias wd='git worktree remove --force'
 alias oc='opencode'
-alias open='xdg-open'
 md() {
     pandoc $1 > /tmp/$1.html
     open /tmp/$1.html
@@ -154,47 +155,37 @@ md() {
 
 # Custom cd function that shows git status when changing between repos
 cd() {
-    # Get the git root of current directory (if in a git repo)
-    local prev_git_root=""
-    if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    local prev_git_root new_git_root git_status output
+    local dest="$@"
+
+    output=$(gtimeout --kill-after=0.1 0.5 bash -c '
         prev_git_root=$(git rev-parse --show-toplevel 2>/dev/null)
-    fi
-    
-    # Actually change directory
-    builtin cd "$@"
-    local cd_exit_code=$?
-    
-    # If cd failed, return early
-    if [ $cd_exit_code -ne 0 ]; then
-        return $cd_exit_code
-    fi
-    
-    # Get the git root of new directory (if in a git repo)
-    local new_git_root=""
-    if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+        cd '"$dest"' 2>/dev/null || exit 1
         new_git_root=$(git rev-parse --show-toplevel 2>/dev/null)
-    fi
-    
-    # Show git status if:
-    # 1. Moved from non-git to git repo, OR
-    # 2. Moved from one git repo to another different git repo
-    if [ -n "$new_git_root" ]; then
-        if [ -z "$prev_git_root" ] || [ "$prev_git_root" != "$new_git_root" ]; then
-            local git_status
-            git_status=$(git status -s)
-            if [ -z "$git_status" ]; then
-                # echo in cyan color
-                echo "‧₊˚🧼✩ ₊˚🫧⊹"
-            else
-                git status -s
-            fi
+        [ -z "$new_git_root" ] && exit 0
+        [ "$new_git_root" = "$prev_git_root" ] && exit 0
+        git_status=$(git status -s)
+        if [ -z "$git_status" ]; then
+            echo "‧₊˚🧼✩ ₊˚🫧⊹"
+        else
+            echo "$git_status"
         fi
+    ')
+    local timeout_exit=$?
+
+    # Always actually cd (the subprocess cd doesn't affect our shell)
+    builtin cd "$@" || return $?
+
+    if [ $timeout_exit -eq 124 ]; then
+        echo "git status timeout"
+    elif [ -n "$output" ]; then
+        echo "$output"
     fi
-    
-    return 0
 }
 
 alias mm='git fetch origin main && git merge origin/main || vi +DiffviewOpen'
+alias rv='acli rovodev tui'
+alias rvr='acli rovodev tui --resume'
 
 # check if in git repo, if so, open nvim
 gd() {
@@ -209,3 +200,21 @@ gd() {
         echo "Not a git repository"
     fi
 }
+
+# commenting bc slow
+# export NVM_DIR="$HOME/.nvm"
+# [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+# [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+
+export PATH="/opt/atlassian/bin:$PATH"
+export PATH="/opt/atlassian/bin:$PATH"
+export PATH="/opt/homebrew/opt/openjdk@21/bin:$PATH"
+
+export JAVA_HOME=/Library/Java/JavaVirtualMachines/amazon-corretto-21.jdk/Contents/Home
+
+alias vertigo='$(git rev-parse --show-toplevel)/bin/vertigo'
+alias vb='vertigo build'
+export PATH="$HOME/.jenv/bin:$PATH"
+eval "$(jenv init -)"
+
+source ~/.afm-git-configrc

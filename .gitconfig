@@ -9,13 +9,33 @@
 [alias]
 	stashu = "!git stash push -S; git stash -u; git stash pop --index stash@{1}"
 	stashi = "!git stash push -S"
-; [core]
-; 	pager = delta
+[core]
+	pager = delta
 [interactive]
 	diffFilter = delta --color-only
 [delta]
 	navigate = true
-	dark = true
+	side-by-side = true
+	line-numbers = true
+
 
 [merge]
 	conflictStyle = zdiff3
+[trace2]
+	eventTarget = af_unix:/Users/jtaylor11/.gittrace/trace.sock
+	eventBrief = true
+	eventNesting = 1
+	configparams = custom.metacommands
+[core]
+	preloadIndex = true
+	fscache = true
+[index]
+	version = 4
+[filter "lfs"]
+	required = true
+	clean = git-lfs clean -- %f
+	smudge = git-lfs smudge -- %f
+	process = git-lfs filter-process
+[afm]
+	binPathManagerScriptHash = 2064e7dbecb4f6f491309b244c13954c265d56ff
+	binPathManagerScriptTimestamp = 1763078148

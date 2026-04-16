@@ -313,6 +313,11 @@ require("lazy").setup({
 							["<C-k>"] = require("telescope.actions").move_selection_previous,
 						},
 					},
+					preview = {
+						hide_on_startup = false,
+						-- Disable treesitter syntax highlighting to avoid ft_to_lang errors
+						treesitter = false,
+					},
 				},
 				-- pickers = {}
 				extensions = {
@@ -367,8 +372,7 @@ require("lazy").setup({
 	},
 	{
 		{
-			"diffview.nvim",
-			dir = "~/code/diffview.nvim/",
+			"sindrets/diffview.nvim",
 			dependencies = {
 				-- nvim-web-devicons is a common dependency for icon support
 				{ "nvim-tree/nvim-web-devicons", lazy = true },
@@ -652,7 +656,26 @@ require("lazy").setup({
 			--        For example, to see the options for `lua_ls`, you could go to: https://luals.github.io/wiki/settings/
 			local servers = {
 				clangd = {},
-				-- gopls = {},
+				gopls = {
+					settings = {
+						gopls = {
+							analyses = {
+								unusedparams = true,
+								shadow = true,
+							},
+							staticcheck = true,
+							gofumpt = true,
+							hints = {
+								assignVariableTypes = true,
+								compositeLiteralFields = true,
+								constantValues = true,
+								functionTypeParameters = true,
+								parameterNames = true,
+								rangeVariableTypes = true,
+							},
+						},
+					},
+				},
 				-- pyright = {},
 				-- rust_analyzer = {},
 				-- ... etc. See `:help lspconfig-all` for a list of all the pre-configured LSPs
@@ -718,6 +741,15 @@ require("lazy").setup({
 	},
 
 	{
+		"mfussenegger/nvim-jdtls",
+		ft = { "java" },
+		dependencies = {
+			"neovim/nvim-lspconfig",
+			"mfussenegger/nvim-dap",
+		},
+	},
+
+	{
 		"kristijanhusak/vim-dadbod-ui",
 		dependencies = {
 			{ "tpope/vim-dadbod", lazy = true },
@@ -769,6 +801,7 @@ require("lazy").setup({
 				end
 			end,
 			formatters_by_ft = {
+				go = { "goimports", "gofmt" },
 				lua = { "stylua" },
 				-- Conform can also run multiple formatters sequentially
 				-- python = { "isort", "black" },
@@ -1001,14 +1034,19 @@ require("lazy").setup({
 	{ -- Highlight, edit, and navigate code
 		"nvim-treesitter/nvim-treesitter",
 		build = ":TSUpdate",
-		main = "nvim-treesitter.configs", -- Sets main module to use for opts
+		main = "nvim-treesitter", -- Sets main module to use for opts
 		-- [[ Configure Treesitter ]] See `:help nvim-treesitter`
 		opts = {
 			ensure_installed = {
 				"bash",
 				"c",
+				"go",
+				"gomod",
+				"gosum",
+				"gotmpl",
 				"diff",
 				"html",
+				"java",
 				"lua",
 				"luadoc",
 				"markdown",
@@ -1271,5 +1309,86 @@ require("lazy").setup({
 
 vim.lsp.enable("tsgo")
 vim.lsp.enable("pyright")
+
+-- [[ Configure Java LSP (jdtls) ]]
+vim.api.nvim_create_autocmd("FileType", {
+	pattern = "java",
+	callback = function()
+		local jdtls_ok, jdtls = pcall(require, "jdtls")
+		if not jdtls_ok then
+			vim.notify("nvim-jdtls not found. Install it with :Lazy sync", vim.log.levels.WARN)
+			return
+		end
+
+		local home = os.getenv("HOME")
+		local jdtls_path = vim.fn.stdpath("data") .. "/mason/packages/jdtls"
+		
+		-- Check if jdtls is installed
+		if vim.fn.isdirectory(jdtls_path) == 0 then
+			vim.notify("jdtls not installed. Run :MasonInstall jdtls", vim.log.levels.WARN)
+			return
+		end
+
+		local config_path = jdtls_path .. "/config_mac" -- Use config_mac for macOS, config_linux for Linux
+		local workspace_dir = home .. "/.local/share/eclipse/" .. vim.fn.fnamemodify(vim.fn.getcwd(), ":p:h:t")
+
+		-- Find the launcher jar
+		local launcher_jar = vim.fn.glob(jdtls_path .. "/plugins/org.eclipse.equinox.launcher_*.jar")
+
+		local config = {
+			cmd = {
+				"java",
+				"-Declipse.application=org.eclipse.jdt.ls.core.id1",
+				"-Dosgi.bundles.defaultStartLevel=4",
+				"-Declipse.product=org.eclipse.jdt.ls.core.product",
+				"-Dlog.protocol=true",
+				"-Dlog.level=ALL",
+				"-Xms1g",
+				"-Xmx2g",
+				"--add-modules=ALL-SYSTEM",
+				"--add-opens",
+				"java.base/java.util=ALL-UNNAMED",
+				"--add-opens",
+				"java.base/java.lang=ALL-UNNAMED",
+				"-jar",
+				launcher_jar,
+				"-configuration",
+				config_path,
+				"-data",
+				workspace_dir,
+			},
+			root_dir = require("jdtls.setup").find_root({ ".git", "mvnw", "gradlew", "pom.xml", "build.gradle" }),
+			settings = {
+				java = {
+					eclipse = {
+						downloadSources = true,
+					},
+					configuration = {
+						updateBuildConfiguration = "interactive",
+					},
+					maven = {
+						downloadSources = true,
+					},
+					implementationsCodeLens = {
+						enabled = true,
+					},
+					referencesCodeLens = {
+						enabled = true,
+					},
+					format = {
+						enabled = true,
+					},
+				},
+			},
+			init_options = {
+				bundles = {},
+			},
+		}
+
+		-- Start or attach jdtls
+		jdtls.start_or_attach(config)
+	end,
+})
+
 -- The line beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et
