@@ -99,6 +99,9 @@ vim.keymap.set("i", "<C-k>", "<C-\\><C-N><C-w><C-k>", { desc = "Move focus to th
 -- close current window
 vim.keymap.set("n", "<C-x>", "<cmd>close<CR>", { desc = "Close the current window" })
 vim.keymap.set("i", "<C-x>", "<C-\\><C-N><cmd>close<CR>", { desc = "Close the current window" })
+-- save without formatting
+vim.keymap.set("n", "<C-s>", "<cmd>noautocmd w<CR>", { desc = "Save without formatting" })
+vim.keymap.set("i", "<C-s>", "<C-\\><C-N><cmd>noautocmd w<CR>", { desc = "Save without formatting" })
 -- open new window
 
 -- Highlight when yanking (copying) text
@@ -994,6 +997,21 @@ require("lazy").setup({
 			--  Check out: https://github.com/echasnovski/mini.nvim
 		end,
 	},
+  {
+    "catgoose/nvim-colorizer.lua",
+    event = "BufReadPre",
+    opts = {
+      user_default_options = {
+        names = false,
+        tailwind = true,
+        css = true,
+        css_fn = true,
+        hsl_fn = true,
+        rgb_fn = true,
+        RRGGBBAA = true,
+      },
+    },
+  },
 
 	-- Session persistence
 	{
