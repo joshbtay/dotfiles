@@ -3,7 +3,7 @@
 [user]
 	name = Josh Taylor
 	username = joshbtay
-	email = joshbtay@gmail.com
+	email = jtaylor11@atlassian.com
 [push]
 	autoSetupRemote = true
 [alias]
@@ -15,7 +15,7 @@
 	diffFilter = delta --color-only
 [delta]
 	navigate = true
-	side-by-side = true
+	; side-by-side = true
 	line-numbers = true
 
 

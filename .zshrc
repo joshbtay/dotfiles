@@ -267,6 +267,20 @@ alias rvr='rv --resume'
 alias cx='codex --dangerously-bypass-approvals-and-sandbox'
 alias cxc='cx resume'
 
+lport() {
+	if [ -z "$1" ]; then
+		echo "Usage: lport <port>"
+		return 1
+	fi
+	lsof -i ":$1"
+}
+kport() {
+	if [ -z "$1" ]; then
+		echo "Usage: kport <port>"
+		return 1
+	fi
+	kill -9 $(lsof -t -i:"$1")
+}
 # check if in git repo, if so, open nvim
 gd() {
     if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
