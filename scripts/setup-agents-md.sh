@@ -26,7 +26,7 @@ compile_dir() {
   local out="$dir/.compiled-claude.md"
   local f files
   [ -w "$dir" ] || return 1
-  files="$(find "$dir" -maxdepth 1 -iname '*agents.md' -type f 2>/dev/null | sort)"
+  files="$(find -L "$dir" -maxdepth 1 -iname '*agents.md' -type f 2>/dev/null | sort)"
   [ -n "$files" ] || return 1
   : > "$out"
   while IFS= read -r f; do
