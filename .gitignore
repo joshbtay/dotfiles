@@ -1,4 +1,8 @@
 code/*
 .claude
 .config/nvim/lazy-lock.json
+.compiled-claude.md
+CLAUDE.md
+*.log
+.DS_Store
 

@@ -21,6 +21,8 @@ setopt HIST_SAVE_NO_DUPS
 
 
 
+fpath=(~/.local/share/zsh/site-functions $fpath)
+
 #### Case insensitivity
 autoload -Uz compinit
 if [[ -n ~/.zcompdump(#qN.mh+24) ]]; then
@@ -53,21 +55,26 @@ alias commit="git commit"
 alias pull="git pull"
 alias stat="git diff --shortstat"
 alias status="git status"
-alias gdiff="git diff HEAD"
+alias gdiff="DELTA_FEATURES=+side-by-side git diff"
+alias di="git -c delta.side-by-side=true diff"
 alias vdiff="git difftool HEAD"
 alias log="git log --color --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit"
 alias cfg="git --git-dir=$HOME/dotfiles/ --work-tree=$HOME"
 alias push="git push"
-alias pf="push --force-with-lease"
+alias pf="push --force-with-lease --no-verify"
 alias stash="git stash"
 alias lg="lazygit"
-alias ld="lazydocker"
 alias co="git checkout"
+alias us="git restore --staged"
+
+alias ld="lazydocker"
 alias ca="add . && commit "
+alias can="add . && commit --no-verify "
 alias ssh="TERM=xterm-256color ssh"
 alias pd="pushd"
 alias od="popd"
 alias ls="ls --color"
+alias h2="npx shopify hydrogen"
 
 export EDITOR=nvim
 
@@ -89,9 +96,23 @@ zinit light romkatv/powerlevel10k
 zinit light jeffreytse/zsh-vi-mode
 zinit light zsh-users/zsh-autosuggestions
 
+# zsh-system-clipboard rebinds the vi yank/paste/delete widgets by reading the
+# current keymap when it loads. zsh-vi-mode (ZVM_INIT_MODE defaults to "last")
+# initializes its keymap AFTER .zshrc is sourced, which clobbers those bindings.
+# Loading it from zvm_after_init makes the clipboard bindings apply last and win.
+# Custom keymap bindings (e.g. ctrl+space) belong here for the same reason.
+function zvm_after_init() {
+  zinit light kutsan/zsh-system-clipboard
+
+  # ctrl + space to accept autosuggestions
+  bindkey -M viins '^ ' autosuggest-accept
+  bindkey -M vicmd '^ ' autosuggest-accept
+}
+
 # Deferred plugins — load after prompt appears (turbo mode)
 zinit ice wait lucid
 zinit light MichaelAquilina/zsh-you-should-use
+export YSU_IGNORED_ALIASES=("co")
 
 zinit ice wait lucid
 zinit light fdellwing/zsh-bat
@@ -105,9 +126,8 @@ zinit light zsh-users/zsh-syntax-highlighting
 
 # zinit light lukechilds/zsh-nvm
 
-#### ctrl + space to accept autosuggestions
-bindkey -M viins '^ ' autosuggest-accept
-bindkey -M vicmd '^ ' autosuggest-accept
+#### ctrl + space to accept autosuggestions is now bound in zvm_after_init
+#### above (ZVM resets the keymap on init, so it must be bound after).
 
 #auto notify settings
 export AUTO_NOTIFY_THRESHOLD=15
@@ -124,8 +144,8 @@ export ATLASSIAN_MCP_AUTHORIZATION="Basic $(printf '%s:%s' "$ATLASSIAN_EMAIL" "$
 export BITBUCKET_API_TOKEN="${BITBUCKET_API_TOKEN:-$ATLASSIAN_API_TOKEN}"
 export SIGNALFX_REALM="${SIGNALFX_REALM:-us1}"
 export SPLUNK_TIMEOUT="${SPLUNK_TIMEOUT:-60000}"
-alias pbcopy='wl-copy'
-alias xclip='wl-copy'
+# alias pbcopy='wl-copy'
+# alias xclip='wl-copy'
 alias zi='vi ~/.zshrc'
 alias hard='echo "Are you sure? This will delete all uncommitted changes. (y/N)" && read ans && [ "$ans" = "y" ] && git reset --hard && git clean -fd'
 
@@ -139,10 +159,19 @@ y() {
 
 typeset -gA WORKTREE_COPY_FILES=(
     [convo-ai]='user-context-for-tests.json'
+    [$HOME/atlassian/afm/master]='.env'
 )
 
+typeset -gA WORKTREE_POST_CREATE_COMMANDS=(
+    [$HOME/atlassian/afm/master]='afm install confluence platform post-office'
+)
+
+_realpath() {
+    python3 -c 'import os, sys; print(os.path.realpath(sys.argv[1]))' "$1"
+}
+
 copy_worktree_files() {
-    local source_root="$1"
+    local source_root="$(_realpath "$1")"
     local target_root="$2"
     local repo_name="${source_root:t}"
     local configured_files="${WORKTREE_COPY_FILES[$source_root]:-${WORKTREE_COPY_FILES[$repo_name]}}"
@@ -164,6 +193,17 @@ copy_worktree_files() {
     done
 }
 
+run_worktree_post_create_commands() {
+    local source_root="$(_realpath "$1")"
+    local target_root="$2"
+    local repo_name="${source_root:t}"
+    local configured_commands="${WORKTREE_POST_CREATE_COMMANDS[$source_root]:-${WORKTREE_POST_CREATE_COMMANDS[$repo_name]}}"
+
+    [ -z "$configured_commands" ] && return 0
+
+    (cd "$target_root" && eval "$configured_commands")
+}
+
 # add a git worktree, copy configured gitignored files from the main repo
 w() {
     # check if there's no first argument or if we're not in a git repo
@@ -175,7 +215,14 @@ w() {
     local branch="$1"
     local start_point="$2"
     local source_root="$(git rev-parse --show-toplevel)"
-    local target_root="${source_root:h}/$branch"
+    local real_source_root="$(_realpath "$source_root")"
+    local target_parent="${source_root:h}"
+
+    if [[ "$real_source_root" == "$HOME/atlassian/afm/"* ]]; then
+	target_parent="${real_source_root:h}"
+    fi
+
+    local target_root="$target_parent/$branch"
 
     if [ -z "$start_point" ]; then
 	if git show-ref --verify --quiet refs/heads/main; then
@@ -193,10 +240,26 @@ w() {
     fi
 
     git worktree add -b "$branch" "$target_root" "$start_point" || return 1
+
     copy_worktree_files "$source_root" "$target_root" || return 1
+    run_worktree_post_create_commands "$source_root" "$target_root" || return 1
     cd "$target_root" || return 1
 }
-alias wd='git worktree remove --force'
+wd() {
+    if [ -z "$1" ]; then
+	echo "Usage: wd <worktree-path>" >&2
+	return 1
+    fi
+
+    local worktree_path="$1"
+    local branch="$(git -C "$worktree_path" branch --show-current 2>/dev/null)"
+
+    git worktree remove --force "$worktree_path" || return 1
+
+    if [ -n "$branch" ] && git show-ref --verify --quiet "refs/heads/$branch"; then
+	git branch -D "$branch"
+    fi
+}
 alias oc='opencode'
 md() {
     pandoc $1 > /tmp/$1.html
@@ -233,6 +296,34 @@ md() {
 #     fi
 # }
 
+_find_venv() {
+    local dir="$PWD"
+    while [[ "$dir" != "/" ]]; do
+        if [[ -f "$dir/venv/bin/activate" ]]; then
+            echo "$dir/venv"
+            return 0
+        fi
+        dir="${dir:h}"
+    done
+    return 1
+}
+
+_auto_venv() {
+    local venv
+    venv=$(_find_venv)
+    if [[ -n "$venv" ]]; then
+        if [[ "$VIRTUAL_ENV" != "$venv" ]]; then
+            source "$venv/bin/activate"
+        fi
+    elif [[ -n "$VIRTUAL_ENV" ]]; then
+        deactivate
+    fi
+}
+
+autoload -Uz add-zsh-hook
+add-zsh-hook chpwd _auto_venv
+_auto_venv
+
 _git_main_branch() {
     if git show-ref --verify --quiet refs/heads/main; then
         echo main
@@ -266,6 +357,9 @@ alias rv='acli rovodev tui --yolo'
 alias rvr='rv --resume'
 alias cx='codex --dangerously-bypass-approvals-and-sandbox'
 alias cxc='cx resume'
+claude() { bash "$HOME/.claude/hooks/append_agents_md.sh"; command claude "$@"; }
+alias cl='claude --dangerously-skip-permissions'
+alias clc='cl -r'
 
 lport() {
 	if [ -z "$1" ]; then
@@ -301,15 +395,20 @@ gd() {
 # [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
 # [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
 
-# fnm is faster than nvm
-eval "$(fnm env --use-on-cd --shell zsh)"
+alias nvm='fnm'
 
 export PATH="/opt/atlassian/bin:$PATH"
 export PATH="/opt/atlassian/bin:$PATH"
 export PATH="/opt/homebrew/opt/openjdk@21/bin:$PATH"
 export PATH="/opt/homebrew/bin:$PATH"
 
+# fnm is faster than nvm.
+# Must be evaluated AFTER the Homebrew PATH export above so fnm's shim dir
+# ends up ahead of /opt/homebrew/bin/node (Homebrew has its own node installed).
+eval "$(fnm env --use-on-cd --shell zsh)"
+
 export JAVA_HOME=/Library/Java/JavaVirtualMachines/amazon-corretto-21.jdk/Contents/Home
+# export JAVA_HOME=/Library/Java/JavaVirtualMachines/zulu-17.jdk/Contents/Home
 
 alias vertigo='$(git rev-parse --show-toplevel)/bin/vertigo'
 alias vb='vertigo build'
@@ -345,3 +444,22 @@ autoload -Uz _zinit
 
 # Added by Teamwork Graph CLI installer
 export PATH="/Users/jtaylor11/.local/bin:$PATH"
+
+export ANDROID_HOME=$HOME/Library/Android/sdk
+export PATH=$PATH:$ANDROID_HOME/emulator
+export PATH=$PATH:$ANDROID_HOME/platform-tools
+export PATH=$PATH:$ANDROID_HOME/tools
+export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin
+
+# Checkout main, or master if main doesn't exist
+cm() {
+  if git show-ref --verify --quiet refs/heads/main; then
+    git checkout main
+  else
+    git checkout master
+  fi
+}
+
+
+
+export PATH="$HOME/.rustup/toolchains/stable-aarch64-apple-darwin/bin:$PATH"
