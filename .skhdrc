@@ -1,0 +1,9 @@
+# Open Kitty terminal on Option + Enter
+alt - return : kitty -1 --directory ~
+
+# Open a new Chrome window on Option + C
+alt - c : open -na "Google Chrome" --args --new-window
+
+alt - fast : osascript -e 'if application "Music" is running then tell application "Music" to set player position to (player position + 10)'
+
+alt - rewind : osascript -e 'if application "Music" is running then' -e 'tell application "Music"' -e 'set rewindSeconds to 10' -e 'set currentPosition to player position' -e 'if currentPosition > rewindSeconds then' -e 'set player position to (currentPosition - rewindSeconds)' -e 'else' -e 'set overlapSeconds to (rewindSeconds - currentPosition)' -e 'set player position to 0' -e 'previous track' -e 'delay 0.2' -e 'set previousDuration to duration of current track' -e 'if previousDuration > overlapSeconds then' -e 'set player position to (previousDuration - overlapSeconds)' -e 'else' -e 'set player position to 0' -e 'end if' -e 'end if' -e 'end tell' -e 'end if'
