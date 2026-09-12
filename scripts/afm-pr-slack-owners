@@ -1,0 +1,282 @@
+#!/usr/bin/env python3
+"""Print Slack channel IDs for AFM teams that own files changed in a Bitbucket PR.
+
+Source of truth mirrors Confluence AFM ownership tooling:
+- confluence/CODEOWNERS maps paths to team slugs
+- confluence/teams.json maps team names/slugs to Slack channel names and IDs
+
+Auth uses Bitbucket basic auth from environment variables already sourced from ~/.env:
+- ATLASSIAN_EMAIL
+- ATLASSIAN_API_TOKEN
+"""
+
+from __future__ import annotations
+
+import argparse
+import base64
+import fnmatch
+import json
+import os
+import re
+import sys
+import urllib.error
+import urllib.parse
+import urllib.request
+from dataclasses import dataclass, field
+from typing import Any
+
+API_ROOT = "https://api.bitbucket.org/2.0"
+AFM_REPO = "atlassian-frontend-monorepo"
+CONFLUENCE_PREFIX = "confluence/"
+
+
+@dataclass
+class OwnerResult:
+    team_slug: str
+    team_name: str
+    slack: str | None
+    slack_channel_id: str | None
+    files: set[str] = field(default_factory=set)
+
+
+def die(message: str, exit_code: int = 1) -> None:
+    print(f"error: {message}", file=sys.stderr)
+    raise SystemExit(exit_code)
+
+
+def kebab_case(value: str) -> str:
+    # Close enough to lodash/kebabCase for AFM team names/slugs.
+    value = re.sub(r"['’]", "", value)
+    value = re.sub(r"[^A-Za-z0-9]+", "-", value)
+    value = re.sub(r"([a-z0-9])([A-Z])", r"\1-\2", value)
+    return value.strip("-").lower()
+
+
+def auth_header() -> dict[str, str]:
+    email = os.environ.get("ATLASSIAN_EMAIL")
+    token = os.environ.get("ATLASSIAN_API_TOKEN")
+    if not email or not token:
+        die("ATLASSIAN_EMAIL and ATLASSIAN_API_TOKEN must be set")
+    encoded = base64.b64encode(f"{email}:{token}".encode()).decode()
+    return {"Authorization": f"Basic {encoded}"}
+
+
+def request_json(url: str) -> dict[str, Any]:
+    req = urllib.request.Request(url, headers={**auth_header(), "Accept": "application/json"})
+    try:
+        with urllib.request.urlopen(req) as response:
+            return json.loads(response.read().decode())
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode(errors="replace")
+        die(f"GET {url} failed with HTTP {exc.code}: {detail[:500]}")
+    except urllib.error.URLError as exc:
+        die(f"GET {url} failed: {exc}")
+
+
+def request_text(url: str) -> str:
+    req = urllib.request.Request(url, headers=auth_header())
+    try:
+        with urllib.request.urlopen(req) as response:
+            return response.read().decode()
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode(errors="replace")
+        die(f"GET {url} failed with HTTP {exc.code}: {detail[:500]}")
+    except urllib.error.URLError as exc:
+        die(f"GET {url} failed: {exc}")
+
+
+def parse_pr_url(pr_url: str) -> tuple[str, str, int]:
+    parsed = urllib.parse.urlparse(pr_url)
+    parts = [part for part in parsed.path.split("/") if part]
+    # /{workspace}/{repo}/pull-requests/{id}[/...]
+    if len(parts) < 4 or parts[2] != "pull-requests":
+        die("expected a Bitbucket PR URL like https://bitbucket.org/atlassian/atlassian-frontend-monorepo/pull-requests/372797")
+    try:
+        pr_id = int(parts[3])
+    except ValueError:
+        die(f"invalid PR id in URL: {parts[3]}")
+    return parts[0], parts[1], pr_id
+
+
+def api_quote(value: str) -> str:
+    return urllib.parse.quote(value, safe="")
+
+
+def get_pr(workspace: str, repo: str, pr_id: int) -> dict[str, Any]:
+    return request_json(f"{API_ROOT}/repositories/{api_quote(workspace)}/{api_quote(repo)}/pullrequests/{pr_id}")
+
+
+def get_changed_paths(workspace: str, repo: str, pr_id: int) -> list[str]:
+    paths: list[str] = []
+    url = f"{API_ROOT}/repositories/{api_quote(workspace)}/{api_quote(repo)}/pullrequests/{pr_id}/diffstat?pagelen=100"
+    while url:
+        payload = request_json(url)
+        for item in payload.get("values", []):
+            new_path = (item.get("new") or {}).get("path")
+            old_path = (item.get("old") or {}).get("path")
+            path = new_path or old_path
+            if path:
+                paths.append(path)
+        url = payload.get("next")
+    return sorted(set(paths))
+
+
+def get_repo_file(workspace: str, repo: str, ref: str, path: str) -> str:
+    # Bitbucket's /src endpoint returns raw file content for file paths.
+    return request_text(
+        f"{API_ROOT}/repositories/{api_quote(workspace)}/{api_quote(repo)}/src/{api_quote(ref)}/{path}"
+    )
+
+
+def parse_codeowners(contents: str) -> list[tuple[str, str]]:
+    rules: list[tuple[str, str]] = []
+    for raw_line in contents.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        # Strip inline comments, then split whitespace. Generated AFM lines are: path @team
+        line = line.split(" #", 1)[0].strip()
+        parts = line.split()
+        if len(parts) < 2:
+            continue
+        pattern = parts[0]
+        # AFM generated CODEOWNERS uses one owner per line for Confluence ownership.
+        owner = parts[1].lstrip("@")
+        rules.append((pattern, owner))
+    return rules
+
+
+def normalize_query_path(repo_path: str) -> str | None:
+    if repo_path.startswith(CONFLUENCE_PREFIX):
+        return repo_path[len(CONFLUENCE_PREFIX) :]
+    return None
+
+
+def codeowner_pattern_matches(pattern: str, query: str) -> bool:
+    pattern = pattern.strip()
+    if not pattern:
+        return False
+
+    anchored = pattern.startswith("/")
+    pattern = pattern.lstrip("/")
+
+    if pattern.endswith("/"):
+        prefix = pattern
+        return query.startswith(prefix) if anchored or "/" in prefix else f"/{prefix}" in f"/{query}"
+
+    if fnmatch.fnmatch(query, pattern):
+        return True
+
+    if "/" not in pattern:
+        return any(fnmatch.fnmatch(part, pattern) for part in query.split("/"))
+
+    # Gitignore-style unanchored path pattern can match below any directory.
+    return fnmatch.fnmatch(query, pattern) or fnmatch.fnmatch(query, f"*/{pattern}")
+
+
+def find_owner_slug(query: str, rules: list[tuple[str, str]]) -> str | None:
+    best_owner: str | None = None
+    best_len = -1
+    for pattern, owner in rules:
+        if codeowner_pattern_matches(pattern, query) and len(pattern) > best_len:
+            best_owner = owner
+            best_len = len(pattern)
+    return best_owner
+
+
+def teams_by_slug(teams_json: dict[str, Any]) -> dict[str, tuple[str, dict[str, Any]]]:
+    return {kebab_case(team_name): (team_name, info) for team_name, info in teams_json.items()}
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Print Slack channel IDs for AFM package owners changed by a PR")
+    parser.add_argument("pr_url", help="Bitbucket PR URL")
+    parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
+    parser.add_argument("--include-files", action="store_true", help="Show files contributing to each owner")
+    args = parser.parse_args()
+
+    workspace, repo, pr_id = parse_pr_url(args.pr_url)
+    if repo != AFM_REPO:
+        die(f"this script currently supports {AFM_REPO}; got {workspace}/{repo}")
+
+    pr = get_pr(workspace, repo, pr_id)
+    dest_ref = pr["destination"]["commit"]["hash"]
+
+    changed_paths = get_changed_paths(workspace, repo, pr_id)
+    codeowners = parse_codeowners(get_repo_file(workspace, repo, dest_ref, "confluence/CODEOWNERS"))
+    teams = json.loads(get_repo_file(workspace, repo, dest_ref, "confluence/teams.json"))
+    team_lookup = teams_by_slug(teams)
+
+    results: dict[str, OwnerResult] = {}
+    unowned: list[str] = []
+    non_confluence: list[str] = []
+
+    for repo_path in changed_paths:
+        query = normalize_query_path(repo_path)
+        if query is None:
+            non_confluence.append(repo_path)
+            continue
+        owner_slug = find_owner_slug(query, codeowners)
+        if owner_slug is None:
+            unowned.append(repo_path)
+            continue
+
+        team_name, team_info = team_lookup.get(owner_slug, (owner_slug, {}))
+        key = owner_slug
+        if key not in results:
+            results[key] = OwnerResult(
+                team_slug=owner_slug,
+                team_name=team_name,
+                slack=team_info.get("slack"),
+                slack_channel_id=team_info.get("slack-channel-id"),
+            )
+        results[key].files.add(repo_path)
+
+    ordered = sorted(results.values(), key=lambda item: item.team_name.lower())
+
+    if args.json:
+        print(
+            json.dumps(
+                {
+                    "pr": args.pr_url,
+                    "destinationCommit": dest_ref,
+                    "owners": [
+                        {
+                            "team": result.team_name,
+                            "teamSlug": result.team_slug,
+                            "slack": result.slack,
+                            "slackChannelId": result.slack_channel_id,
+                            "slackMention": f"<#{result.slack_channel_id}>" if result.slack_channel_id else None,
+                            "files": sorted(result.files),
+                        }
+                        for result in ordered
+                    ],
+                    "unowned": unowned,
+                    "nonConfluence": non_confluence,
+                },
+                indent=2,
+            )
+        )
+        return
+
+    if not ordered:
+        print("No Confluence AFM owners found for changed files.")
+    else:
+        print("Slack channel IDs needed for AFM review:")
+        for result in ordered:
+            if result.slack_channel_id:
+                print(f"{result.slack_channel_id}\t{result.slack or ''}\t{result.team_name}")
+            else:
+                print(f"MISSING_SLACK_CHANNEL_ID\t{result.slack or ''}\t{result.team_name}")
+            if args.include_files:
+                for file_path in sorted(result.files):
+                    print(f"  - {file_path}")
+
+    if unowned:
+        print("\nUnowned Confluence paths:", file=sys.stderr)
+        for path in unowned:
+            print(f"  - {path}", file=sys.stderr)
+
+
+if __name__ == "__main__":
+    main()

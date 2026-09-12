@@ -1,0 +1,152 @@
+#!/usr/bin/env python3
+import argparse
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+EXCLUDED_TOP_LEVEL = {
+    "adminhub",
+    "assets-app",
+    "avp",
+    "css-xp",
+    "flask",
+    "growth-unified-profile",
+    "guard-detect",
+    "help-center",
+    "jira",
+    "jsm-lite",
+    "kitsune",
+    "mercury",
+    "rovo-extension",
+    "store",
+    "studio",
+    "team-camp",
+    "townsquare",
+    "volt",
+    "wac",
+}
+
+ALWAYS_INCLUDE = {
+    "confluence",
+    "platform",
+    "post-office",
+}
+
+
+def run(worktree, args, *, input=None, check=True):
+    return subprocess.run(
+        ["git", "-C", str(worktree), *args],
+        input=input,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=check,
+    )
+
+
+def repo_root(path):
+    return Path(run(path, ["rev-parse", "--show-toplevel"]).stdout.strip()).resolve()
+
+
+def afm_root(worktree):
+    common = Path(run(worktree, ["rev-parse", "--git-common-dir"]).stdout.strip())
+    if not common.is_absolute():
+        common = (worktree / common).resolve()
+    if common.name == ".bare":
+        return common.parent
+    return worktree.parent
+
+
+def overrides_path(worktree):
+    return afm_root(worktree) / ".afm-sparse-overrides"
+
+
+def normalize_path(path):
+    normalized = str(Path(path.strip()))
+    if normalized in ("", ".") or normalized.startswith("../") or normalized.startswith("/"):
+        return None
+    return normalized.rstrip("/")
+
+
+def read_overrides(worktree):
+    path = overrides_path(worktree)
+    if not path.exists():
+        return []
+    result = []
+    for line in path.read_text().splitlines():
+        line = line.split("#", 1)[0].strip()
+        normalized = normalize_path(line)
+        if normalized:
+            result.append(normalized)
+    return result
+
+
+def tracked_top_level_dirs(worktree):
+    output = run(worktree, ["ls-tree", "-d", "--name-only", "HEAD"]).stdout
+    return {line.strip().rstrip("/") for line in output.splitlines() if line.strip()}
+
+
+def sparse_paths(worktree):
+    paths = tracked_top_level_dirs(worktree) - EXCLUDED_TOP_LEVEL
+    paths.update(ALWAYS_INCLUDE)
+    paths.update(read_overrides(worktree))
+    return sorted(paths)
+
+
+def apply_sparse(worktree, checkout=False):
+    paths = sparse_paths(worktree)
+    run(worktree, ["sparse-checkout", "init", "--cone", "--sparse-index"])
+    run(worktree, ["sparse-checkout", "set", "--cone", "--sparse-index", "--stdin"], input="\n".join(paths) + "\n")
+    if checkout:
+        run(worktree, ["checkout", "-f", "HEAD"])
+    print(f"Applied static AFM sparse checkout to {worktree}")
+    print(f"Sparse top-level paths: {len(paths)}")
+    excluded = sorted(tracked_top_level_dirs(worktree) & EXCLUDED_TOP_LEVEL)
+    print("Excluded: " + ", ".join(excluded))
+
+
+def add_overrides(worktree, paths):
+    override_file = overrides_path(worktree)
+    existing = read_overrides(worktree)
+    merged = list(dict.fromkeys([*existing, *filter(None, map(normalize_path, paths))]))
+    override_file.write_text("\n".join(merged) + "\n")
+    print(f"Updated {override_file}")
+    apply_sparse(worktree)
+
+
+def list_sparse(worktree):
+    for path in sparse_paths(worktree):
+        print(path)
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Manage static sparse checkout for AFM worktrees")
+    subparsers = parser.add_subparsers(dest="command", required=True)
+    for command in ("apply", "bootstrap", "refresh", "list", "disable"):
+        sub = subparsers.add_parser(command)
+        sub.add_argument("worktree", nargs="?", default=os.getcwd())
+    add = subparsers.add_parser("add")
+    add.add_argument("paths", nargs="+")
+    add.add_argument("--worktree", default=os.getcwd())
+    args = parser.parse_args()
+
+    worktree = repo_root(Path(getattr(args, "worktree", os.getcwd())).resolve())
+    if "/atlassian/afm/" not in str(worktree):
+        raise SystemExit(f"Not an AFM worktree: {worktree}")
+
+    if args.command in {"apply", "refresh"}:
+        apply_sparse(worktree)
+    elif args.command == "bootstrap":
+        apply_sparse(worktree, checkout=True)
+    elif args.command == "add":
+        add_overrides(worktree, args.paths)
+    elif args.command == "list":
+        list_sparse(worktree)
+    elif args.command == "disable":
+        run(worktree, ["sparse-checkout", "disable"])
+        print(f"Disabled sparse checkout in {worktree}")
+
+
+if __name__ == "__main__":
+    main()

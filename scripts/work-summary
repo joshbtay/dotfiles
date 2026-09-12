@@ -1,0 +1,136 @@
+#!/usr/bin/env python3
+"""Summarize what I did in a date range.
+
+For now this only pulls the Bitbucket PRs I authored that were merged or
+opened within the range, printing "<title> — <url>", one per line.
+
+Usage:
+    work-summary                       # past two weeks
+    work-summary <start-date>          # <start-date> .. today
+    work-summary <start-date> <end-date>
+
+Dates are YYYY-MM-DD and inclusive.
+"""
+import json
+import subprocess
+import sys
+import tempfile
+from datetime import date, datetime, timedelta
+
+
+def twg_json(args: list[str]) -> dict:
+    with tempfile.NamedTemporaryFile(suffix=".json", mode="r") as out:
+        cmd = ["twg", *args, "-o", "json", "--output-file", out.name]
+        result = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+        if result.returncode != 0:
+            raise SystemExit(f"twg failed:\n{result.stderr.decode(errors='replace')}")
+        out.seek(0)
+        payload = out.read()
+    return json.loads(payload) if payload.strip() else {}
+
+
+_repo_name_cache: dict[tuple[str, str], str] = {}
+
+
+def repo_full_name(workspace: str, repo: str) -> str:
+    """Resolve a repo's readable "workspace/slug" name from its UUIDs."""
+    key = (workspace, repo)
+    if key not in _repo_name_cache:
+        data = twg_json(["bitbucket", "repo", "get", repo, "--workspace", workspace])
+        _repo_name_cache[key] = data.get("data", data).get("full_name", "")
+    return _repo_name_cache[key]
+
+
+def pr_number(pr: dict) -> str:
+    return pr.get("url", "").rsplit("/", 1)[-1]
+
+
+def pr_url(pr: dict, full_name: str) -> str:
+    """Rebuild the PR url with a readable slug, falling back to the raw url."""
+    raw = pr.get("url", "")
+    if full_name and "/pull-requests/" in raw:
+        return f"https://bitbucket.org/{full_name}/pull-requests/{pr_number(pr)}"
+    return raw
+
+
+BADGES = {
+    "MERGED": ("\033[1;35m", " MERGED "),  # purple
+    "OPEN": ("\033[1;32m", "  OPEN  "),     # green
+    "DRAFT": ("\033[1;90m", " DRAFT  "),    # gray
+}
+
+
+def badge(state: str) -> str:
+    color, label = BADGES.get(state, ("", state))
+    if color and sys.stdout.isatty():
+        return f"{color}{label}\033[0m"
+    return label.strip()
+
+
+def parse_date(value: str) -> date:
+    try:
+        return datetime.strptime(value, "%Y-%m-%d").date()
+    except ValueError:
+        raise SystemExit(f"Invalid date '{value}'. Expected YYYY-MM-DD.")
+
+
+def date_range(argv: list[str]) -> tuple[date, date | None]:
+    if len(argv) == 0:
+        return date.today() - timedelta(days=14), None
+    if len(argv) == 1:
+        return parse_date(argv[0]), None
+    if len(argv) == 2:
+        return parse_date(argv[0]), parse_date(argv[1])
+    raise SystemExit(__doc__)
+
+
+def in_range(value: str, start: date, end: date | None) -> bool:
+    if not value:
+        return False
+    day = datetime.fromisoformat(value.replace("Z", "+00:00")).date()
+    return day >= start and (end is None or day <= end)
+
+
+def query_prs(extra_args: list[str]) -> list[dict]:
+    data = twg_json([
+        "pull-requests", "query",
+        "--scope", "me", "--role", "author", "-n", "500",
+        *extra_args,
+    ])
+    return data.get("data", {}).get("pullRequests", [])
+
+
+def main() -> None:
+    start, end = date_range(sys.argv[1:])
+
+    # --state all surfaces MERGED / OPEN / DRAFT (and DECLINED/SUPERSEDED, which
+    # we drop). --updated-since bounds the low end; the high end and the notion
+    # of "did work here" are enforced client-side per state below.
+    prs = query_prs(["--state", "all", "--updated-since", start.isoformat()])
+
+    def keep(pr: dict) -> bool:
+        state = pr.get("state")
+        if state == "MERGED":
+            return in_range(pr.get("mergedAt", ""), start, end)
+        if state in ("OPEN", "DRAFT"):
+            return in_range(pr.get("createdAt", ""), start, end)
+        return False
+
+    seen = set()
+    lines = []
+    for pr in filter(keep, prs):
+        full_name = repo_full_name(pr.get("repo", {}).get("workspace", ""), pr.get("repo", {}).get("name", ""))
+        url = pr_url(pr, full_name)
+        if url in seen:
+            continue
+        seen.add(url)
+        lines.append(f"{badge(pr['state'])} {pr.get('title', '(no title)')} — {url}")
+
+    print("\n".join(lines))
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        sys.exit(130)

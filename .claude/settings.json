@@ -1,9 +1,23 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
-  "alwaysThinkingEnabled": true,
+  "attribution": {
+    "commit": "",
+    "pr": ""
+  },
+  "autoCompactEnabled": false,
+  "deniedMcpServers": [
+    {
+      "serverName": "claude.ai bitbucket cloud"
+    },
+    {
+      "serverName": "claude.ai Atlassian Rovo"
+    }
+  ],
+  "editorMode": "vim",
   "feedbackSurveyState": {
     "lastShownTime": 1754070569520
   },
+  "fileCheckpointingEnabled": false,
   "hooks": {
     "PostToolUse": [
       {
@@ -26,6 +40,17 @@
         ],
         "matcher": "Bash"
       }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "command": "bash /Users/jtaylor11/.claude/hooks/append_agents_md.sh",
+            "type": "command"
+          }
+        ],
+        "matcher": "startup|resume"
+      }
     ]
   },
   "includeCoAuthoredBy": false,
@@ -39,7 +64,6 @@
       "Bash(pnpm:*)",
       "Bash(rg:*)",
       "Read(*)",
-      "Read(*)",
       "Bash(echo:*)",
       "Bash(pbcopy:*)",
       "Bash(git checkout:*)",
@@ -51,11 +75,94 @@
       "Bash(node:*)",
       "Bash(gh pr diff:*)",
       "Bash(gh pr view:*)",
-      "Bash(pnpm:*)",
       "Bash(pnpm run:*)",
-      "Bash(pnpm type-check:*)"
+      "Bash(pnpm type-check:*)",
+      "Edit",
+      "Write",
+      "Agent",
+      "Bash(twg *)",
+      "Bash(git diff)",
+      "Bash(ping *)",
+      "Bash(nslookup *)",
+      "Bash(host *)",
+      "Bash(mkdir *)",
+      "Bash(gh project view)",
+      "Bash(gh project link)",
+      "Bash(gh project list)",
+      "Bash(gh issue list)",
+      "Bash(gh issue status)",
+      "Bash(gh issue view)",
+      "Bash(gh pr list)",
+      "Bash(gh pr status)",
+      "Bash(gh pr view)",
+      "Bash(tmux *)",
+      "Bash(ssh *)",
+      "Bash(scp *)",
+      "Bash(curl *)",
+      "Bash(uv *)",
+      "Bash(python *)",
+      "Bash(python3 *)",
+      "Bash(npm *)",
+      "Bash(node *)",
+      "Bash(pytest *)",
+      "Bash(cp *)",
+      "Bash(cat *)",
+      "Bash(grep *)",
+      "Bash(find *)",
+      "Bash(tail *)",
+      "Bash(head *)",
+      "Bash(ls *)",
+      "Bash(echo *)",
+      "Bash(bb *)",
+      "Bash(databricks *)"
     ],
     "defaultMode": "acceptEdits",
-    "deny": []
-  }
+    "deny": [
+      "Read(**/.env*)",
+      "Read(**/secrets/**)",
+      "Read(**/*.pem)",
+      "Read(**/*.key)",
+      "Read(~/.ssh/**)",
+      "Read(~/.aws/**)",
+      "Read(~/.gnupg/**)",
+      "Read(**/.git/**)",
+      "Read(/etc/passwd)",
+      "Read(/etc/group)",
+      "Bash(wget *)",
+      "Bash(/usr/bin/wget *)",
+      "Bash(nc *)",
+      "Bash(sudo *)",
+      "Bash(chmod 777 *)",
+      "Bash(rm -rf /)",
+      "Bash(git push --force *)"
+    ]
+  },
+  "sandbox": {
+    "enabled": false,
+    "filesystem": {
+      "allowRead": [
+        "/System/Library/OpenSSL/openssl.cnf"
+      ],
+      "allowWrite": [
+        "~/.local/state/ops-sherpa"
+      ]
+    },
+    "network": {
+      "allowMachLookup": [
+        "com.apple.trustd.agent"
+      ],
+      "allowUnixSockets": [
+        "~/.local/state/ops-sherpa/daemon.sock"
+      ]
+    }
+  },
+  "skipDangerousModePermissionPrompt": true,
+  "spinnerVerbs": {
+    "mode": "replace",
+    "verbs": [
+      "    "
+    ]
+  },
+  "theme": "auto",
+  "tui": "fullscreen"
 }

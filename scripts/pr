@@ -1,28 +1,233 @@
 #!/bin/zsh
-if git status &>/dev/null; then
-  current_branch=$(git rev-parse --abbrev-ref HEAD)
-  if [[ "$current_branch" = "main" ]]; then
-    echo "Can't open a PR on main!"
-    exit 1
-  else
-    echo "Opening PR"
-    git push
-    template="$(git rev-parse --show-toplevel)/.github/pull_request_template.md"
-    filled_template="/tmp/temp_pr_body"
-    [ -f $template ] && cp $template $filled_template
-    nvim $filled_template
-    pr_output=$(gh pr create --body-file $filled_template --fill)
-    # Extract the URL from the output and copy it to the clipboard
-    pr_url=$(echo "$pr_output" | grep -o 'https://github\.com[^ ]*')
-    echo "PR created: $pr_url"
+set -euo pipefail
 
-    # Copy the PR URL to the clipboard (macOS)
-    echo "$pr_url" | wl-copy
-    echo "PR URL copied to clipboard!"
-    # Copy the PR url to the clipboard (Linux)
+usage() {
+  cat <<'EOF'
+Usage: pr [options]
 
-  fi
-else
-  echo "Not a git repository"
+Create a Bitbucket Cloud pull request for the current branch.
+
+Options:
+  -d, --draft               Create a draft PR
+      --ready, --no-draft   Create a non-draft PR (default)
+  -t, --target BRANCH       Target branch (default: repo's main branch)
+      --title TITLE         PR title (default: current branch)
+      --body TEXT           PR description text
+      --body-file FILE      PR description file
+      --no-edit             Do not open editor for the PR description
+      --no-push             Do not push before creating the PR
+      --close-source-branch Close the source branch after merge
+  -h, --help                Show help
+
+Requires ATLASSIAN_EMAIL and ATLASSIAN_API_TOKEN in the environment.
+EOF
+}
+
+fail() {
+  echo "pr: $*" >&2
   exit 1
+}
+
+urlencode() {
+  python3 -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=""))' "$1"
+}
+
+json_escape() {
+  python3 -c 'import json, sys; print(json.dumps(sys.argv[1]))' "$1"
+}
+
+extract_bitbucket_repo() {
+  local remote="$1"
+
+  case "$remote" in
+    git@bitbucket.org:*)
+      remote="${remote#git@bitbucket.org:}"
+      ;;
+    ssh://git@bitbucket.org/*)
+      remote="${remote#ssh://git@bitbucket.org/}"
+      ;;
+    https://bitbucket.org/*)
+      remote="${remote#https://bitbucket.org/}"
+      ;;
+    http://bitbucket.org/*)
+      remote="${remote#http://bitbucket.org/}"
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+
+  remote="${remote%.git}"
+  local workspace="${remote%%/*}"
+  local repo="${remote#*/}"
+
+  [[ -n "$workspace" && -n "$repo" && "$workspace" != "$repo" ]] || return 1
+  echo "$workspace/$repo"
+}
+
+copy_to_clipboard() {
+  if command -v pbcopy >/dev/null 2>&1; then
+    printf '%s' "$1" | pbcopy
+  elif command -v wl-copy >/dev/null 2>&1; then
+    printf '%s' "$1" | wl-copy
+  elif command -v xclip >/dev/null 2>&1; then
+    printf '%s' "$1" | xclip -selection clipboard
+  else
+    return 1
+  fi
+}
+
+draft=false
+target_branch=""
+title=""
+body=""
+body_file=""
+edit_body=true
+push_branch=true
+close_source_branch=false
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -d|--draft)
+      draft=true
+      shift
+      ;;
+    --ready|--no-draft)
+      draft=false
+      shift
+      ;;
+    -t|--target)
+      [[ $# -ge 2 ]] || fail "$1 requires a branch"
+      target_branch="$2"
+      shift 2
+      ;;
+    --title)
+      [[ $# -ge 2 ]] || fail "$1 requires a title"
+      title="$2"
+      shift 2
+      ;;
+    --body)
+      [[ $# -ge 2 ]] || fail "$1 requires text"
+      body="$2"
+      shift 2
+      ;;
+    --body-file)
+      [[ $# -ge 2 ]] || fail "$1 requires a file"
+      body_file="$2"
+      shift 2
+      ;;
+    --no-edit)
+      edit_body=false
+      shift
+      ;;
+    --no-push)
+      push_branch=false
+      shift
+      ;;
+    --close-source-branch)
+      close_source_branch=true
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      fail "unknown option: $1"
+      ;;
+  esac
+done
+
+git rev-parse --is-inside-work-tree >/dev/null 2>&1 || fail "not a git repository"
+
+current_branch="$(git rev-parse --abbrev-ref HEAD)"
+[[ "$current_branch" != "HEAD" ]] || fail "not on a branch"
+
+remote_name="$(git config branch."$current_branch".remote || true)"
+[[ -n "$remote_name" ]] || remote_name="origin"
+remote_url="$(git remote get-url "$remote_name" 2>/dev/null || git remote get-url origin 2>/dev/null || true)"
+[[ -n "$remote_url" ]] || fail "no git remote found"
+
+repo_path="$(extract_bitbucket_repo "$remote_url")" || fail "remote is not a Bitbucket Cloud repo: $remote_url"
+workspace="${repo_path%%/*}"
+repo="${repo_path#*/}"
+
+[[ -n "${ATLASSIAN_EMAIL:-}" ]] || fail "ATLASSIAN_EMAIL is not set"
+[[ -n "${ATLASSIAN_API_TOKEN:-}" ]] || fail "ATLASSIAN_API_TOKEN is not set"
+
+if [[ -z "$target_branch" ]]; then
+  target_branch="$(curl --silent --fail \
+    --user "$ATLASSIAN_EMAIL:$ATLASSIAN_API_TOKEN" \
+    "https://api.bitbucket.org/2.0/repositories/$(urlencode "$workspace")/$(urlencode "$repo")" \
+    | python3 -c 'import json, sys; print(json.load(sys.stdin).get("mainbranch", {}).get("name", ""))')"
+  [[ -n "$target_branch" ]] || fail "could not determine repo's main branch; pass -t BRANCH"
+fi
+
+[[ "$current_branch" != "$target_branch" ]] || fail "can't create a PR from $target_branch to itself"
+
+git diff --quiet || echo "Warning: working tree has uncommitted changes" >&2
+
+if [[ "$push_branch" == true ]]; then
+  git push -u "$remote_name" "$current_branch"
+fi
+
+if [[ -z "$title" ]]; then
+  title="$current_branch"
+fi
+
+body_tmp="$(mktemp -t pr_body.XXXXXX)"
+response_tmp=""
+trap 'rm -f "$body_tmp" "$response_tmp"' EXIT
+
+if [[ -n "$body_file" ]]; then
+  [[ -f "$body_file" ]] || fail "body file not found: $body_file"
+  cp "$body_file" "$body_tmp"
+elif [[ -n "$body" ]]; then
+  printf '%s\n' "$body" > "$body_tmp"
+else
+  template="$(git rev-parse --show-toplevel)/.github/pull_request_template.md"
+  [[ -f "$template" ]] && cp "$template" "$body_tmp" || : > "$body_tmp"
+fi
+
+if [[ "$edit_body" == true ]]; then
+  "${EDITOR:-nvim}" "$body_tmp"
+fi
+
+description="$(cat "$body_tmp")"
+source_branch_json="$(json_escape "$current_branch")"
+target_branch_json="$(json_escape "$target_branch")"
+title_json="$(json_escape "$title")"
+description_json="$(json_escape "$description")"
+
+payload=$(cat <<EOF
+{
+  "title": $title_json,
+  "description": $description_json,
+  "source": { "branch": { "name": $source_branch_json } },
+  "destination": { "branch": { "name": $target_branch_json } },
+  "draft": $draft,
+  "close_source_branch": $close_source_branch
+}
+EOF
+)
+
+response_tmp="$(mktemp -t pr_response.XXXXXX)"
+http_status=$(curl --silent --show-error --output "$response_tmp" --write-out '%{http_code}' \
+  --user "$ATLASSIAN_EMAIL:$ATLASSIAN_API_TOKEN" \
+  --header 'Content-Type: application/json' \
+  --request POST \
+  --data "$payload" \
+  "https://api.bitbucket.org/2.0/repositories/$(urlencode "$workspace")/$(urlencode "$repo")/pullrequests")
+
+if [[ "$http_status" -lt 200 || "$http_status" -ge 300 ]]; then
+  cat "$response_tmp" >&2
+  fail "Bitbucket returned HTTP $http_status"
+fi
+
+pr_url="$(python3 -c 'import json, sys; data=json.load(open(sys.argv[1])); print(data.get("links", {}).get("html", {}).get("href", ""))' "$response_tmp")"
+[[ -n "$pr_url" ]] || fail "created PR, but could not find PR URL in response"
+
+echo "PR created: $pr_url"
+if copy_to_clipboard "$pr_url"; then
+  echo "PR URL copied to clipboard"
 fi

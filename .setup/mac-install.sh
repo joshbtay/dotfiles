@@ -1,8 +1,6 @@
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 brew install stow kitty neovim
-brew install --cask nikitabobko/tap/aerospace
 brew install rg fzf
-brew install tidal
 
 
 curl -sL --proto-redir -all,https https://raw.githubusercontent.com/zplug/installer/master/installer.zsh | zsh

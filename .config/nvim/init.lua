@@ -72,6 +72,137 @@ vim.keymap.set("n", "<Esc>", "<cmd>nohlsearch<CR>")
 -- Diagnostic keymaps
 vim.keymap.set("n", "<leader>q", vim.diagnostic.setloclist, { desc = "Open diagnostic [Q]uickfix list" })
 
+-- Yank the current file's name / path to the clipboard
+vim.keymap.set("n", "<leader>yn", function()
+	local name = vim.fn.expand("%:t")
+	vim.fn.setreg("+", name)
+	vim.notify("Yanked file name: " .. name)
+end, { desc = "[Y]ank file [N]ame (no path)" })
+vim.keymap.set("n", "<leader>yp", function()
+	local path = vim.fn.expand("%:p")
+	vim.fn.setreg("+", path)
+	vim.notify("Yanked file path: " .. path)
+end, { desc = "[Y]ank file [P]ath (full)" })
+
+-- Open the pull request that last touched the current line
+vim.keymap.set("n", "gp", function()
+	local file = vim.fn.expand("%:p")
+	if file == "" or vim.bo.buftype ~= "" then
+		return vim.notify("No file in this buffer", vim.log.levels.WARN)
+	end
+	local dir = vim.fn.fnamemodify(file, ":h")
+	local function git(args, stdin)
+		local res = vim.system(vim.list_extend({ "git", "-C", dir }, args), { text = true, stdin = stdin }):wait()
+		return res.code == 0 and vim.trim(res.stdout) or nil
+	end
+
+	local remote = git({ "remote", "get-url", "origin" })
+	if not remote then
+		return vim.notify("No 'origin' remote for this file", vim.log.levels.WARN)
+	end
+	local host, repo_path = remote:match("^%w+@([^:/]+)[:/](.+)$")
+	if not host then
+		host, repo_path = remote:match("^%a+://[^/@]*@?([^/]+)/(.+)$")
+	end
+	if not host then
+		return vim.notify("Unrecognized remote: " .. remote, vim.log.levels.WARN)
+	end
+	repo_path = repo_path:gsub("%.git$", "")
+	local is_github = host:find("github") ~= nil
+	local base = "https://" .. host .. "/" .. repo_path
+
+	local buffer = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n") .. (vim.bo.eol and "\n" or "")
+	local blame = git(
+		{ "blame", "-L", vim.fn.line(".") .. ",+1", "--porcelain", "--contents", "-", "--", file },
+		buffer
+	)
+	if not blame then
+		return vim.notify("Could not blame this line", vim.log.levels.WARN)
+	end
+	local sha, blame_line = blame:match("^(%x+) (%d+)")
+	if not sha then
+		return vim.notify("Could not parse git blame output", vim.log.levels.WARN)
+	end
+	if sha:match("^0+$") then
+		return vim.notify("This line is not committed yet", vim.log.levels.WARN)
+	end
+	local blame_file = blame:match("\nfilename ([^\n]+)")
+	local anchor = ""
+	if blame_file then
+		anchor = is_github and ("#diff-" .. vim.fn.sha256(blame_file) .. "R" .. blame_line)
+			or ("#L" .. blame_file .. "T" .. blame_line)
+	end
+
+	local function pr_id(msg)
+		return msg:match("[Pp]ull [Rr]equest #(%d+)") or msg:match("^#(%d+):") or msg:match("%(#(%d+)%)")
+	end
+
+	local pr = pr_id(git({ "log", "-1", "--format=%B", sha }) or "")
+	if not pr then
+		local upstream = git({ "rev-parse", "--abbrev-ref", "origin/HEAD" }) or "origin/master"
+		local merges = vim.split(
+			git({ "log", "--ancestry-path", "--merges", "--format=%s", sha .. ".." .. upstream }) or "",
+			"\n"
+		)
+		for i = #merges, 1, -1 do
+			pr = pr_id(merges[i])
+			if pr then
+				break
+			end
+		end
+	end
+	local function pr_url(id)
+		return base .. (is_github and "/pull/" .. id .. "/files" or "/pull-requests/" .. id .. "/diff") .. anchor
+	end
+
+	if pr then
+		return vim.ui.open(pr_url(pr))
+	end
+
+	local commit_url = base .. (is_github and "/commit/" or "/commits/") .. sha .. anchor
+	local workspace, repo = repo_path:match("^([^/]+)/([^/]+)$")
+	if is_github or not host:find("bitbucket") or not workspace then
+		vim.notify("No pull request in the commit message; opening the commit", vim.log.levels.WARN)
+		return vim.ui.open(commit_url)
+	end
+
+	vim.notify("No pull request in the commit message; asking twg…")
+	vim.system({
+		"twg",
+		"bitbucket",
+		"prs",
+		"for-commit",
+		sha,
+		"--workspace",
+		workspace,
+		"--repo",
+		repo,
+		"-o",
+		"json",
+	}, { text = true }, function(res)
+		local ok, prs = pcall(vim.json.decode, res.stdout or "")
+		vim.schedule(function()
+			if not ok or type(prs) ~= "table" or vim.tbl_isempty(prs) then
+				vim.notify("twg found no pull request; opening the commit", vim.log.levels.WARN)
+				return vim.ui.open(commit_url)
+			end
+			if #prs == 1 then
+				return vim.ui.open(pr_url(prs[1].id))
+			end
+			vim.ui.select(prs, {
+				prompt = "Pull requests containing " .. sha:sub(1, 8),
+				format_item = function(p)
+					return "#" .. p.id .. "  " .. p.title
+				end,
+			}, function(choice)
+				if choice then
+					vim.ui.open(pr_url(choice.id))
+				end
+			end)
+		end)
+	end)
+end, { desc = "Open the [P]ull request for the current line" })
+
 -- Exit terminal mode in the builtin terminal with a shortcut that is a bit easier
 -- for people to discover. Otherwise, you normally need to press <C-\><C-n>, which
 -- is not what someone will guess without a bit more experience.
@@ -679,8 +810,16 @@ require("lazy").setup({
 						},
 					},
 				},
-				-- pyright = {},
-				-- rust_analyzer = {},
+				basedpyright = {},
+				rust_analyzer = {
+					settings = {
+						["rust-analyzer"] = {
+							cargo = { allFeatures = true },
+							check = { command = "clippy" },
+							procMacro = { enable = true },
+						},
+					},
+				},
 				-- ... etc. See `:help lspconfig-all` for a list of all the pre-configured LSPs
 				--
 				-- Some languages (like typescript) have entire language plugins that can be useful:
@@ -690,6 +829,7 @@ require("lazy").setup({
 				prismals = {},
 				biome = {},
 				tsgo = {},
+				denols = {},
 				lua_ls = {
 					-- cmd = { ... },
 					-- filetypes = { ... },
@@ -719,16 +859,19 @@ require("lazy").setup({
 			--
 			-- You can add other tools here that you want Mason to install
 			-- for you, so that they are available from within Neovim.
-			-- local ensure_installed = vim.tbl_keys(servers or {})
-			-- vim.list_extend(ensure_installed, {
-			-- 	"stylua", -- Used to format Lua code
-			-- 	"biome",
-			-- })
-			-- require("mason-tool-installer").setup({ ensure_installed = ensure_installed })
+			local ensure_installed = vim.tbl_keys(servers or {})
+			vim.list_extend(ensure_installed, {
+				"stylua",
+				"biome",
+			})
+			require("mason-tool-installer").setup({ ensure_installed = ensure_installed })
 
 			require("mason-lspconfig").setup({
 				ensure_installed = {}, -- explicitly set to an empty table (Kickstart populates installs via mason-tool-installer)
 				automatic_installation = false,
+				-- jdtls is started by nvim-jdtls; enabling it here too would win the race and
+				-- attach a client with none of that configuration.
+				automatic_enable = { exclude = { "jdtls" } },
 				handlers = {
 					function(server_name)
 						local server = servers[server_name] or {}
@@ -740,6 +883,12 @@ require("lazy").setup({
 					end,
 				},
 			})
+
+			vim.lsp.config("kotlin_lsp", {
+				cmd = { "kotlin-lsp", "--stdio" },
+				capabilities = capabilities,
+			})
+			vim.lsp.enable("kotlin_lsp")
 		end,
 	},
 
@@ -806,8 +955,9 @@ require("lazy").setup({
 			formatters_by_ft = {
 				go = { "goimports", "gofmt" },
 				lua = { "stylua" },
+				rust = { "rustfmt" },
 				-- Conform can also run multiple formatters sequentially
-				-- python = { "isort", "black" },
+				python = { "isort", "black" },
 				javascript = { "biome-check" },
 				typescript = { "biome-check" },
 				json = { "biome" },
@@ -1070,6 +1220,7 @@ require("lazy").setup({
 				"markdown",
 				"markdown_inline",
 				"query",
+				"rust",
 				"vim",
 				"vimdoc",
 			},
@@ -1329,82 +1480,174 @@ vim.lsp.enable("tsgo")
 vim.lsp.enable("pyright")
 
 -- [[ Configure Java LSP (jdtls) ]]
+local jdtls_refreshed_modules = {}
+local jdtls_classpath_watchers = {}
+local jdtls_swept_roots = {}
+
+-- m2e narrows a source folder to the <includes> of any maven-compiler-plugin execution bound to the
+-- compile goal, so an annotation-processor-only execution listing a few files (confluence-core) drops
+-- the rest of the module off the build path: syntax errors only, no references. It reads those
+-- includes straight off the Maven execution plan, so a lifecycle mapping cannot suppress them, and it
+-- rewrites .classpath whenever the project configuration is updated.
+local function jdtls_widen_source_folders(classpath)
+	local file = io.open(classpath, "r")
+	if not file then
+		return
+	end
+	local content = file:read("a")
+	file:close()
+	if not content:find('including="', 1, true) then
+		return
+	end
+	file = assert(io.open(classpath, "w"))
+	file:write((content:gsub(' including="[^"]*"', "")))
+	file:close()
+end
+
+-- jdtls only honours .classpath as it stands when the project is loaded, so every narrowed source
+-- folder has to be widened before the server starts.
+local function jdtls_widen_root_source_folders(root)
+	if jdtls_swept_roots[root] then
+		return
+	end
+	jdtls_swept_roots[root] = true
+	local find = ("find %s -name .classpath -not -path '*/target/*' -print0 | xargs -0 grep -l 'including=\"'"):format(
+		vim.fn.shellescape(root)
+	)
+	for _, classpath in ipairs(vim.fn.systemlist({ "sh", "-c", find })) do
+		jdtls_widen_source_folders(classpath)
+	end
+end
+
+local function jdtls_watch_classpath(module)
+	if jdtls_classpath_watchers[module] then
+		return
+	end
+	local classpath = module .. "/.classpath"
+	local watcher = assert(vim.uv.new_fs_event())
+	jdtls_classpath_watchers[module] = watcher
+	local rearm
+	rearm = function()
+		watcher:stop()
+		watcher:start(classpath, {}, function()
+			vim.schedule(function()
+				jdtls_widen_source_folders(classpath)
+				rearm()
+			end)
+		end)
+	end
+	rearm()
+end
+
 vim.api.nvim_create_autocmd("FileType", {
 	pattern = "java",
-	callback = function()
+	callback = function(event)
 		local jdtls_ok, jdtls = pcall(require, "jdtls")
-		if not jdtls_ok then
-			vim.notify("nvim-jdtls not found. Install it with :Lazy sync", vim.log.levels.WARN)
+		local launcher = vim.fn.stdpath("data") .. "/mason/bin/jdtls"
+		if not jdtls_ok or vim.fn.executable(launcher) == 0 then
+			vim.notify("jdtls unavailable: run :Lazy sync and :MasonInstall jdtls", vim.log.levels.WARN)
 			return
 		end
 
-		local home = os.getenv("HOME")
-		local jdtls_path = vim.fn.stdpath("data") .. "/mason/packages/jdtls"
-		
-		-- Check if jdtls is installed
-		if vim.fn.isdirectory(jdtls_path) == 0 then
-			vim.notify("jdtls not installed. Run :MasonInstall jdtls", vim.log.levels.WARN)
-			return
-		end
+		local root = vim.fs.root(event.buf, { "mvnw", "gradlew", ".git" }) or vim.fn.getcwd()
+		local workspace = vim.fn.stdpath("cache")
+			.. "/jdtls/"
+			.. vim.fn.fnamemodify(root, ":t")
+			.. "-"
+			.. vim.fn.sha256(root):sub(1, 8)
 
-		local config_path = jdtls_path .. "/config_mac" -- Use config_mac for macOS, config_linux for Linux
-		local workspace_dir = home .. "/.local/share/eclipse/" .. vim.fn.fnamemodify(vim.fn.getcwd(), ":p:h:t")
+		local capabilities = vim.tbl_deep_extend(
+			"force",
+			vim.lsp.protocol.make_client_capabilities(),
+			require("cmp_nvim_lsp").default_capabilities()
+		)
+		-- File watching over a repo the size of the Confluence monolith saturates the CPU;
+		-- external changes (branch switches, builds) need :JdtRestart to be picked up.
+		capabilities.workspace.didChangeWatchedFiles.dynamicRegistration = false
 
-		-- Find the launcher jar
-		local launcher_jar = vim.fn.glob(jdtls_path .. "/plugins/org.eclipse.equinox.launcher_*.jar")
+		jdtls_widen_root_source_folders(root)
 
-		local config = {
+		jdtls.start_or_attach({
 			cmd = {
-				"java",
-				"-Declipse.application=org.eclipse.jdt.ls.core.id1",
-				"-Dosgi.bundles.defaultStartLevel=4",
-				"-Declipse.product=org.eclipse.jdt.ls.core.product",
-				"-Dlog.protocol=true",
-				"-Dlog.level=ALL",
-				"-Xms1g",
-				"-Xmx2g",
-				"--add-modules=ALL-SYSTEM",
-				"--add-opens",
-				"java.base/java.util=ALL-UNNAMED",
-				"--add-opens",
-				"java.base/java.lang=ALL-UNNAMED",
-				"-jar",
-				launcher_jar,
-				"-configuration",
-				config_path,
+				launcher,
 				"-data",
-				workspace_dir,
+				workspace,
+				"--jvm-arg=-Xms2g",
+				"--jvm-arg=-Xmx16g",
+				"--jvm-arg=-XX:+UseG1GC",
+				"--jvm-arg=-XX:GCTimeRatio=4",
+				"--jvm-arg=-XX:AdaptiveSizePolicyWeight=90",
+				"--jvm-arg=-Dsun.zip.disableMemoryMapping=true",
+				"--jvm-arg=-Dlog.level=ERROR",
 			},
-			root_dir = require("jdtls.setup").find_root({ ".git", "mvnw", "gradlew", "pom.xml", "build.gradle" }),
+			root_dir = root,
+			capabilities = capabilities,
 			settings = {
 				java = {
-					eclipse = {
-						downloadSources = true,
-					},
+					autobuild = { enabled = false },
+					maxConcurrentBuilds = 4,
+					eclipse = { downloadSources = true },
+					maven = { downloadSources = true, downloadJavadoc = false },
+					references = { includeDecompiledSources = true },
+					signatureHelp = { enabled = true },
+					format = { enabled = true },
+					implementationsCodeLens = { enabled = false },
+					referencesCodeLens = { enabled = false },
+					inlayHints = { parameterNames = { enabled = "literals" } },
 					configuration = {
 						updateBuildConfiguration = "interactive",
+						maven = { userSettings = vim.env.HOME .. "/.m2/settings.xml" },
+						runtimes = {
+							{
+								name = "JavaSE-21",
+								path = "/Library/Java/JavaVirtualMachines/amazon-corretto-21.jdk/Contents/Home",
+								default = true,
+							},
+							{
+								name = "JavaSE-17",
+								path = "/Library/Java/JavaVirtualMachines/zulu-17.jdk/Contents/Home",
+							},
+						},
 					},
-					maven = {
-						downloadSources = true,
-					},
-					implementationsCodeLens = {
-						enabled = true,
-					},
-					referencesCodeLens = {
-						enabled = true,
-					},
-					format = {
-						enabled = true,
+					import = {
+						gradle = { enabled = false },
+						maven = { enabled = true },
+						exclusions = {
+							"**/node_modules/**",
+							"**/target/**",
+							"**/.metadata/**",
+							"**/archetype-resources/**",
+							"**/META-INF/maven/**",
+						},
 					},
 				},
 			},
 			init_options = {
 				bundles = {},
+				extendedClientCapabilities = jdtls.extendedClientCapabilities,
 			},
-		}
+			on_attach = function(client, bufnr)
+				-- m2e cannot deserialize the Maven classpath containers it persisted, so on every
+				-- start after the initial import a module resolves nothing until it is re-resolved.
+				local module = vim.fs.root(bufnr, "pom.xml")
+				if module then
+					jdtls_watch_classpath(module)
+					if not jdtls_refreshed_modules[module] then
+						jdtls_refreshed_modules[module] = true
+						client:notify("java/projectConfigurationUpdate", { uri = vim.uri_from_bufnr(bufnr) })
+					end
+				end
 
-		-- Start or attach jdtls
-		jdtls.start_or_attach(config)
+				local map = function(keys, func, desc)
+					vim.keymap.set("n", keys, func, { buffer = bufnr, desc = "LSP: " .. desc })
+				end
+				map("<leader>jo", jdtls.organize_imports, "[J]ava [O]rganize imports")
+				map("<leader>jb", function()
+					jdtls.compile("full")
+				end, "[J]ava [B]uild workspace")
+				map("<leader>ju", "<cmd>JdtUpdateConfig<cr>", "[J]ava [U]pdate project config")
+			end,
+		})
 	end,
 })
 

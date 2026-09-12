@@ -12,8 +12,8 @@ from typing import Any
 from kitty.boss import Boss
 from kitty.window import Window
 
-FOCUSED_OPACITY = "0.95"
-UNFOCUSED_OPACITY = "0.6"
+FOCUSED_OPACITY = "0.7"
+UNFOCUSED_OPACITY = "0.3"
 LOG_FILE = Path.home() / ".config" / "kitty" / "focus_opacity.log"
 LOG = False
 

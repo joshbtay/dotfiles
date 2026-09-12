@@ -6,6 +6,8 @@
 	email = jtaylor11@atlassian.com
 [push]
 	autoSetupRemote = true
+[pull]
+	rebase = true
 [alias]
 	stashu = "!git stash push -S; git stash -u; git stash pop --index stash@{1}"
 	stashi = "!git stash push -S"
@@ -15,12 +17,14 @@
 	diffFilter = delta --color-only
 [delta]
 	navigate = true
-	; side-by-side = true
 	line-numbers = true
 
 
 [merge]
 	conflictStyle = zdiff3
+	autoStash = true
+[rebase]
+	autoStash = true
 [trace2]
 	eventTarget = af_unix:/Users/jtaylor11/.gittrace/trace.sock
 	eventBrief = true
@@ -37,5 +41,6 @@
 	smudge = git-lfs smudge -- %f
 	process = git-lfs filter-process
 [afm]
-	binPathManagerScriptHash = 2064e7dbecb4f6f491309b244c13954c265d56ff
-	binPathManagerScriptTimestamp = 1763078148
+	binPathManagerScriptHash = ab5ec9869dbea881228a25f30eff8e3b23988bba
+	binPathManagerScriptTimestamp = 1786693702
+	legacyAfmPackageCleanupV2 = true
