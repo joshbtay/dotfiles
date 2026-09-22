@@ -1,0 +1,9 @@
+# Insert your preferred key mappings here.
+unmap J
+unmap K
+unmap H
+unmap L
+map <c-o> goBack
+map <c-i> goForward
+map <c-j> previousTab
+map <c-k> nextTab
